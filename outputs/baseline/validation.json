@@ -1,0 +1,11 @@
+{
+  "event_count": 3000,
+  "detected_count": 2373,
+  "accounting": "passed",
+  "paired_candidates": "passed",
+  "timing": "passed",
+  "direct_astropy_visibility": "passed",
+  "astrometry_tolerance_deg": 0.02,
+  "max_source_alt_error_deg": 0.00042121200549871674,
+  "max_solar_alt_error_deg": 0.019257745170818907
+}

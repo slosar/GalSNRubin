@@ -1,0 +1,223 @@
+\documentclass[11pt]{article}
+\usepackage[margin=0.8in]{geometry}
+\usepackage{graphicx,booktabs,longtable,amsmath,array}
+\usepackage[T1]{fontenc}
+\usepackage[hidelinks]{hyperref}
+\newcommand{\runpath}{../outputs/baseline}
+\graphicspath{{../outputs/baseline/figures/}}
+\title{Galactic supernova follow-up with Rubin\\\large A neutrino-triggered Monte Carlo forecast}
+\author{GalSNRubin simulation}
+\date{Baseline experiment: triggers in 2027}
+\begin{document}
+\maketitle
+\begin{abstract}
+We simulate 1,000 catalogue-sampled Galactic supernova locations and trigger dates
+for each of three canonical progenitors (RSG, BSG and WR). The same candidates
+are reused across the three models. GNILC-rescaled dust extinction feeds the
+existing early light-curve package; an idealized Rubin search then includes
+night, source altitude, setup, pointing probability, exposure depth and
+saturation. This is a conditional forecast of an idealized response, not an
+operational scheduler or an estimate of the Galactic supernova rate.
+\end{abstract}
+
+\section{Baseline results}
+\begin{center}\small\input{\runpath/results.tex}\end{center}
+Counts of immediate saturation and usable photometry are out of all 1,000
+triggers per type. Median times and magnitudes are conditional on detection.
+Immediate saturation means the first detected exposure saturates; usable means
+at least one detected, unsaturated exposure was obtained. Discovery magnitudes
+are underlying model magnitudes, even where detector saturation prevents
+ordinary PSF photometry. We optimistically count saturated sources as localized.
+
+\begin{figure}[ht]\centering
+\includegraphics[width=\linewidth]{outcomes.pdf}
+\caption{Exhaustive, mutually exclusive terminal outcomes. Error bars are
+binomial Monte Carlo standard errors; the three classes share input draws and
+are correlated. Physical and operational systematics are not in these errors.}
+\end{figure}
+
+\section{Population and emission model}
+The input is \texttt{TRILEGAL\_noLMCSMC\_10plusZAMS.pkl}, a trusted local pandas
+pickle with 39,723 rows. Rows are sampled uniformly with replacement, preserving
+their ICRS coordinates and distance moduli. Distances follow
+$d/{\rm kpc}=10^{(\mu_0-10)/5}$. The catalogue's extinction and stellar masses are
+not used for the model: \texttt{galdust.av(ra,dec,d)} supplies $A_V$ to
+\texttt{ccsnlc.LightCurveModel}. Thus the population is a spatial weighting,
+not an evolutionary selection of each progenitor class.
+
+The existing light-curve library supplies its canonical RSG, BSG and WR
+progenitors, neutrino-to-breakout delays, shock-cooling emission, light-travel
+smearing, blackbody spectrum, CCM extinction and LSST throughput integration.
+Its assumptions and literature provenance are documented in the sibling
+\texttt{CCLightCurves/README.md}; the dust model is documented in
+\texttt{DustModel/galdust-repo/README.md}. The baseline uses deterministic delays.
+No extrapolation is made beyond the library's $T=1$ eV cutoff. Pre-breakout
+flux is zero; post-cutoff emission is unknown, not zero. In particular, a WR
+non-detection after model expiry is not evidence against later optical emission.
+
+\section{Visibility and observing policy}
+Trigger dates are uniform in UTC over 2027. Rubin coordinates and field area
+come from the official observatory pages\footnote{\url{https://rubinobservatory.org/for-scientists/rubin-101}}
+\footnote{\url{https://rubinobservatory.org/for-scientists/rubin-101/instruments}}.
+We first reject sources with maximum geometric altitude at or below the horizon,
+then sources that never exceed the minimum altitude. A night starts ten minutes
+after evening astronomical twilight and ends at morning astronomical twilight.
+A source must be above the minimum altitude during that night. A three-day
+follow-up deadline is measured from the trigger, not from the first exposure.
+The date range can cross into 2028 for late-December triggers.
+
+Astropy supplies Sun positions, Earth rotation and CIRS coordinates. A source's
+CIRS coordinates are frozen at trigger time for its short follow-up; a 300 s
+solar/rotation grid is interpolated. Visibility boundaries are rounded inward
+on a 60 s grid; very short windows may be missed. Refraction is disabled.
+Future Earth orientation uses bundled IERS data with no downloads; polar motion
+beyond the prediction range defaults to a long-term mean, with arcsecond-scale
+accuracy. This is adequate for the present timing resolution.
+
+The initial 90 s filter setup starts at the first eligible instant. It is charged
+once; it may complete during a subsequent gap. Each pointing contains
+$1,1,15,15$ s exposures, each followed by 15 s dead time including repositioning:
+$T_{\rm point}=92$ s. Only complete blocks fitting within a visibility window are
+scheduled, including the last dead time. Observing pauses across daylight or
+low-altitude intervals and resumes in the next eligible window.
+
+\section{Localization and photometry}
+We interpret the prescribed uncertainty as a spherical-cap \emph{radius}:
+\begin{align}
+\theta(d)&=\min\left[180^\circ,30^\circ(d/25\,{\rm kpc})^2\right],\\
+A(\theta)&=2\pi(1-\cos\theta)(180/\pi)^2\;{\rm deg}^2,\\
+p_{\rm hit}&=\min(1,9.6\,{\rm deg}^2/A).
+\end{align}
+Each pointing draws independently with replacement. Its exposures share one
+FOV result; this is not a tiling without replacement. Source visibility is
+assessed at the true source coordinates. No trigger centroid or probability-map
+visibility is generated. Consequently this is an idealized area-ratio search,
+not a deployable localization strategy. The search uniforms are paired between
+progenitor types for each candidate. After the first detection the telescope
+tracks the known source. Observations terminate at the first saturated exposure,
+or otherwise at the deadline; model-expired exposures cannot produce detections.
+
+Five midpoint samples integrate flux over each exposure. Any exposure crossing
+the model cutoff is invalid. Single-exposure detection requires SNR $\geq5$;
+no coaddition or repeat confirmation is required. The discovery time is the
+exposure end, with no image-processing latency. Sensitivity follows Rubin's
+SMTN-002 prescription\footnote{\url{https://smtn-002.lsst.io/}}:
+\begin{equation}
+{\rm SNR}=\frac{C}{\sqrt{C+n_{\rm eff}(B+R^2+Dt)}},\qquad
+n_{\rm eff}=2.266({\rm FWHM}_{\rm eff}/s_{\rm pix})^2.
+\end{equation}
+Here $C$ is source electrons, $B$ sky electrons per pixel, $R$ read noise, $D$
+dark current and $t$ exposure duration. Tabulated zero points convert AB flux to
+counts. Dark sky and zenith seeing are fixed. Historical Science Book saturation
+fiducials\footnote{\url{https://www.lsst.org/sites/default/files/docs/sciencebook/SB_Whole.pdf}}
+are treated as configurable 15 s thresholds, scaled at constant charge by
+$m_{\rm sat}(t)=m_{\rm sat}(15)+2.5\log_{10}(t/15)$.
+These are planning assumptions rather than measured 2027 short-exposure performance.
+
+\begin{figure}[ht]\centering
+\includegraphics[width=\linewidth]{discovery.pdf}
+\caption{Detection time, model brightness at discovery, and first saturation
+time. Time distributions use all triggers as denominator and therefore retain
+the incompleteness; brightness is conditional on detection. Three curves
+compare progenitors using the same candidate population.}
+\end{figure}
+\begin{figure}[ht]\centering
+\includegraphics[width=\linewidth]{saturation.pdf}
+\caption{Detection and saturation fractions, and the relation between discovery
+time and brightness. Saturated localization need not yield usable photometry.}
+\end{figure}
+
+\section{Miss accounting and limitations}
+The ordered rejection reasons are: never above horizon; never above minimum
+altitude; no night visibility within the deadline; no complete pointing fits;
+no valid model exposure; too faint in all valid exposures; and search miss despite
+at least one detectable opportunity. These mutually exclusive reasons diagnose
+the executed experiment, not a unique causal explanation in the real sky.
+Model expiry is also retained as a separate event diagnostic for modelled events.
+A detected source without saturation remains a successful detection.
+
+Weather, Moon, changing sky, airmass losses, crowding, blending, template
+availability, pipeline failure, slew geometry, normal survey scheduling and
+resource contention are omitted. At the 15-degree altitude threshold, using
+zenith sensitivity is particularly optimistic. A 1 s exposure mode and recovery
+of extremely saturated sources are assumed. Neither the smooth dust model nor
+canonical progenitor spectra capture the full astrophysical uncertainty.
+The curves quantify the stated model, not guaranteed Rubin performance.
+
+\clearpage
+\section{Sky distributions and extinction}
+\begin{figure}[ht]\centering
+\includegraphics[width=\linewidth]{sky_success.pdf}
+\caption{Successful supernova detections for each progenitor in Galactic
+Mollweide projection. Saturated and unsaturated detections are both included.
+The Galactic centre is at the centre; longitude increases to the left.
+Graticules are spaced by $60^\circ$ in longitude and $30^\circ$ in latitude.
+Colours count events in equal-area HEALPix pixels ($N_{\rm side}=32$,
+3.36 square degrees per pixel), using a common scale across panels.
+Light grey pixels contain no selected events. These are population counts,
+not detection efficiencies.}
+\end{figure}
+\begin{figure}[ht]\centering
+\includegraphics[width=\linewidth]{sky_failures.pdf}
+\caption{Failure distributions in the same Galactic projection. Rows compare
+progenitors; columns separate no night visibility, too faint, and search miss.
+All nine panels use a common count scale, separate from the success figure.
+Only the three requested failure categories are shown; other outcomes remain
+in the complete accounting in Figure 1. The identical night-visibility panels
+reflect the shared sky positions and trigger dates.}
+\end{figure}
+\begin{figure}[ht]\centering
+\includegraphics[width=.85\linewidth]{av_distribution.pdf}
+\caption{Distribution of the dust model's V-band extinction $A_V$ for the
+1,000 shared candidates, in 2 mag bins. Each candidate is counted once,
+not once per progenitor; repeated catalogue draws are distinct candidates.
+The dashed line marks the median. The full extinction range is included.}
+\end{figure}
+\clearpage
+\section{Quality assurance}
+\begin{figure}[ht]\centering
+\includegraphics[width=\linewidth]{qa_population.pdf}
+\caption{Population, extinction, localization and visibility diagnostics.
+Shared inputs make first-observation distributions coincide across types.
+All discovered events must satisfy the source and solar altitude cuts.}
+\end{figure}
+\begin{figure}[ht]\centering
+\includegraphics[width=\linewidth]{qa_models.pdf}
+\caption{Reference light curves at 10 kpc and $A_V=10$, with detection (dashed)
+and saturation (dotted horizontal) thresholds and breakout delays (vertical).
+The right panel verifies localization scaling and the spherical-cap area.}
+\end{figure}
+\begin{figure}[ht]\centering
+\includegraphics[width=\linewidth]{qa_sampling.pdf}
+\caption{Independent search Monte Carlo against the geometric-distribution
+prediction $1-(1-p)^N$ (dashed), and uniform trigger-date sampling.}
+\end{figure}
+
+Numerical tests cover cap geometry including full-sky capping, cadence and
+setup, sensitivity and saturation scaling, direct SNR recovery, detection and
+miss categories, tracking after discovery, flux integration and model validity,
+Bernoulli hit statistics, distance conversion, reproducible catalogue sampling,
+configuration validation, and astrometry against direct Astropy AltAz positions
+(0.02 degree absolute tolerance). Existing light-curve regression tests are run
+alongside these integration tests. Full-run checks verify outcome accounting,
+paired candidates, temporal limits and discovery geometry.
+
+\clearpage
+\section{Configurable parameters}
+All simulation parameters are recorded below from the actual run configuration.
+Six-entry instrument tuples use filter order $u,g,r,i,z,y$. Exposure tuples are
+ordered, so the number of entries also configures the number of exposures.
+CLI paths select the catalogue and output directory; their values and the
+catalogue SHA256 are recorded in run metadata. Implementation choices described
+above (e.g. uniform row sampling and independent search) are fixed model policies.
+{\footnotesize\raggedright\input{\runpath/parameters.tex}}
+
+\section{Reproduction and saved data}
+Use the installation and execution commands in \texttt{GalSNRubin/README.md}.
+\texttt{outputs/baseline/} stores candidates, all 3,000 event outcomes, configuration,
+dependency versions, catalogue hash, statistical summaries, figure PDFs/PNGs and
+LaTeX tables. The first three candidates of each progenitor retain compressed
+exposure audits. All event times ending in \texttt{\_s} are seconds from trigger;
+\texttt{trigger\_unix} is UTC Unix time. Missing values mark unavailable measurements.
+Recompile this report twice with \texttt{pdflatex} after regenerating the baseline.
+\end{document}
