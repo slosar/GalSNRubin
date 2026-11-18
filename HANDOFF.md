@@ -8,24 +8,40 @@ The baseline contains 1,000 shared candidates for each of RSG, BSG and WR, with
 2027 trigger dates. Source, configuration, tests, saved results, exposure audits,
 figure PDFs/PNGs, LaTeX source and the compiled report are included.
 
-The latest change adds a configurable topocentric Moon exclusion, defaulting to
+The latest change fixes saturation accounting: complete the first pointing in
+which all exposures saturate before stopping, and classify any event with at
+least one usable detection as `detected_unsaturated`, even if it later saturates.
+Long-exposure saturation alone no longer stops subsequent short exposures.
+The cadence remains [1, 1, 15, 15] s with no coaddition. `saturation_s` now marks
+the end of the first fully saturated pointing; `immediate_saturation` means
+this is the discovery pointing. Individual audit saturation flags are retained.
+
+The preceding change added a configurable topocentric Moon exclusion, defaulting to
 10 degrees (`moon_avoidance_deg`; zero disables it). Figure 1 labels the existing
 nighttime category as "Not visible during night" and adds "Moon avoidance."
 The latter means complete pointings could fit without the lunar veto, but none
 fit after it. Partial lunar losses retain the final photometric/search outcome.
 The report narrative and generated parameter table describe these definitions.
 The updated run is in `outputs/baseline_moon/`; the original no-Moon run remains
-in `outputs/baseline/`, with its configuration explicitly pinned to zero radius.
+in `outputs/baseline/`, with its configuration explicitly pinned to zero radius
+and the historical first-saturated-exposure rule. The Moon baseline has been
+fully regenerated with the corrected saturation rule.
 Galactic success/failure maps and the extinction histogram remain included.
 Plot regeneration uses existing results and does not resimulate events.
 
 ## Baseline results
 
-| Progenitor | Detected / 1,000 | Median delay among detections | Immediately saturated / 1,000 |
-|---|---:|---:|---:|
-| RSG | 794 | 28.55 hours | 521 |
-| BSG | 802 | 9.77 hours | 487 |
-| WR | 775 | 7.20 hours | 445 |
+| Progenitor | Detected / 1,000 | Median delay among detections | Saturated only / 1,000 | Usable / 1,000 |
+|---|---:|---:|---:|---:|
+| RSG | 794 | 28.55 hours | 521 | 273 |
+| BSG | 802 | 9.77 hours | 485 | 317 |
+| WR | 775 | 7.20 hours | 423 | 352 |
+
+Previously the terminal saturated counts were 702, 708, 674, respectively,
+including events with earlier usable exposures. Beyond that classification
+correction, continuing short exposures recovers usable data for 2 BSG and 22 WR
+events. The detection flags, discovery times and discovery magnitudes are
+unchanged for all 3,000 events.
 
 Median extinction is Av = 11.33 mag. The outcome maps agree with the event-table
 counts, and the histogram contains exactly 1,000 candidates.
@@ -49,7 +65,7 @@ export XDG_CACHE_HOME=/tmp/galsnrubin-cache
 .venv/bin/python -m galsnrubin.products outputs/baseline_moon
 ```
 
-All 26 tests passed. Full-run accounting, paired candidates, timing and direct
+All 32 tests passed. Full-run accounting, paired candidates, timing and direct
 Astropy visibility checks passed; see `outputs/baseline_moon/validation.json`.
 Maximum discovery lunar-separation error was 0.00034 degrees (0.02 tolerance).
 The report was compiled and its rendered pages were visually checked.

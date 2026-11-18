@@ -99,7 +99,13 @@ change it to compile an alternate run.
   light is zero. A detection is one exposure at or above 5 sigma, no coadding or
   multi-exposure confirmation. Time to discovery is the exposure end, with no
   processing/alert latency. After detection, subsequent pointings track the source.
-* Any saturated detection ends observations. Saturated sources count as localized
+* Complete the first pointing in which **all exposures saturate**, then stop.
+  A saturated long exposure does not prevent subsequent short exposures. Any
+  usable detection, before or after a saturated exposure, makes the event an
+  unsaturated success. Only detections with no usable photometry count as
+  saturated-only. The two 15 s exposures are separate, not coadded into 30 s;
+  the same rule supports configurations with individual 30 s exposures.
+  Saturated sources count as localized
   even if no unsaturated exposure exists: this assumes recognisable saturated
   images and **does not establish real pipeline recovery performance**.
 * Sensitivity uses the SMTN-002 count/noise prescription, with fixed dark sky and
@@ -155,20 +161,29 @@ events with remaining pointings retain their final photometric/search outcome.
 the pre-veto windows and before/after scheduling counts; `n_windows` counts
 Moon-safe windows. `discovery_moon_sep_deg` records the discovery separation.
 
-Detections end as `detected_saturated` or `detected_unsaturated` (deadline or model
-cutoff reached without saturation). `model_expired_by_deadline` flags expiry for
+Detections are `detected_unsaturated` if **any** detected exposure is usable,
+even when longer or later exposures saturate. Otherwise they are
+`detected_saturated` (saturated-only). A source jumping from undetectable to
+saturated in all exposure modes without an observed usable interval belongs to
+the latter category. If short exposures are too faint but the following long
+exposures saturate, subsequent pointings still attempt short exposures.
+`model_expired_by_deadline` flags expiry for
 modelled events and is false for events rejected before modelling. It is not an
 additional exclusive miss reason. No prediction of later recombination or
-radioactive emission is made. `immediate_saturation` refers to the **first detected
-exposure**. `usable_photometry` means at least one detected unsaturated exposure;
-it can be true even when a later exposure saturates. `n_hits` counts successful
+radioactive emission is made. `saturation_s` is the end of the first **fully
+saturated pointing**; `immediate_saturation` means this is the discovery pointing.
+These are stopping diagnostics, separate from the event classification.
+`usable_photometry` means at least one detected unsaturated exposure;
+it can be true even when a later pointing fully saturates. `n_hits` counts successful
 random search draws within used pointing blocks, not tracked-field observations.
-Repeated exposure rows share a pointing's FOV result. Audits stop at saturation.
+Repeated exposure rows share a pointing's FOV result. Audits keep individual
+exposure saturation flags and stop after a fully saturated pointing, if any.
 
 The original run without Moon avoidance remains in `outputs/baseline/`; its
 configuration explicitly records `moon_avoidance_deg=0`. The updated report
-and reproduction commands use `outputs/baseline_moon/`. Figure 1 now labels
-the existing nighttime category explicitly and adds Moon avoidance.
+and reproduction commands use `outputs/baseline_moon/`, regenerated with the
+usable-photometry classification and fully saturated pointing stop rule. The
+original no-Moon run is historical and uses the old first-saturated-exposure rule.
 
 ## Scientific inputs
 

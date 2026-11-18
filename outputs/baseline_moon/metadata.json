@@ -9,6 +9,7 @@
     "galdust": "0.1.0",
     "matplotlib": "3.11.2"
   },
+  "saturation_policy": "Stop after a fully saturated pointing; detected_saturated only if no usable detection was obtained",
   "magnitude_limits": [
     21.346794893628612,
     21.346794893628612,

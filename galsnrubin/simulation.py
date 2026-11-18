@@ -56,11 +56,15 @@ def sample_catalog(path, config):
 
 
 def observe(model, starts, probability, rng, config):
-    """Search until first single-exposure detection, then track until saturation.
+    """Search until detection, then track until a fully saturated pointing.
 
     A saturated exposure counts as a localization with unusable ordinary PSF
     photometry. This optimistic assumption is explicit in the report. Every
-    exposure in a pointing shares one FOV draw. No model extrapolation occurs.
+    exposure in a pointing shares one FOV draw. A long exposure saturating does
+    not discard usable short exposures or stop subsequent pointings. Complete
+    the first pointing whose exposures all saturate, then stop. An event with
+    any usable detection remains detected_unsaturated even if it later saturates.
+    No model extrapolation occurs.
     """
     mags = exposure_magnitudes(model,starts,config)
     depth,satlimit = limits(config)
@@ -74,14 +78,14 @@ def observe(model, starts, probability, rng, config):
         in_field[first[0]:] = True
     detections = detectable & in_field
     saturation = saturated & in_field
-    sat_indices = np.argwhere(saturation)
-    stop = tuple(sat_indices[0]) if first is not None and len(sat_indices) else None
+    saturated_pointings = np.flatnonzero(saturation.all(axis=1))
+    stop = (int(saturated_pointings[0]), starts.shape[1]-1) if first is not None and len(saturated_pointings) else None
     used = np.ones(starts.shape,dtype=bool)
     if stop is not None:
         used.ravel()[np.ravel_multi_index(stop,starts.shape)+1:] = False
     usable = detections & ~saturated & used
     valid = np.isfinite(mags)
-    reason = ('detected_saturated' if stop is not None else 'detected_unsaturated') if first is not None else (
+    reason = ('detected_unsaturated' if usable.any() else 'detected_saturated') if first is not None else (
         'no_valid_model_exposure' if not valid.any() else
         'too_faint' if not detectable.any() else 'search_miss')
     duration = np.asarray(config.exposures_s)
@@ -89,7 +93,7 @@ def observe(model, starts, probability, rng, config):
         first_detection_s=float(starts[first]+duration[first[1]]) if first is not None else np.nan,
         discovery_mag=float(mags[first]) if first is not None else np.nan,
         discovery_exposure_s=float(duration[first[1]]) if first is not None else np.nan,
-        immediate_saturation=bool(saturated[first]) if first is not None else False,
+        immediate_saturation=bool(stop is not None and stop[0] == first[0]) if first is not None else False,
         saturation_s=float(starts[stop]+duration[stop[1]]) if stop is not None else np.nan,
         usable_photometry=bool(usable.any()),
         n_pointings=int(np.any(used,axis=1).sum()),
@@ -186,6 +190,7 @@ def run(catalog_path, output_dir, config):
     for prog, group in results.groupby('progenitor',sort=False):
         detected = group[group.detected]
         summary[prog] = dict(n=len(group),detected=int(group.detected.sum()),
+             saturated_only=int((group.outcome == 'detected_saturated').sum()),
              immediate_saturation=int(group.immediate_saturation.sum()),
              usable_photometry=int(group.usable_photometry.sum()),
              median_detection_hours=float(detected.first_detection_s.median()/3600) if len(detected) else None,
@@ -195,6 +200,7 @@ def run(catalog_path, output_dir, config):
     metadata = dict(catalog=Path(catalog_path).name,
          catalog_sha256=hashlib.sha256(Path(catalog_path).read_bytes()).hexdigest(),
          versions={p:version(p) for p in ['numpy','pandas','astropy','ccsnlc','galdust','matplotlib']},
+         saturation_policy='Stop after a fully saturated pointing; detected_saturated only if no usable detection was obtained',
          magnitude_limits=depth.tolist(),saturation_limits=satlimit.tolist(),
          calendar='Bundled offline IERS; builtin topocentric Moon; geometric altitude; frozen source CIRS per trigger')
     (output/'metadata.json').write_text(json.dumps(metadata,indent=2))

@@ -56,7 +56,7 @@ def test_detection_saturation_and_misses():
     starts=pointing_starts([(0,1000)],0,cfg)
     result,_=observe(ToyModel(5),starts,1,np.random.default_rng(1),cfg)
     assert result['immediate_saturation'] and result['detected']
-    assert result['n_exposures']==1 and not result['usable_photometry']
+    assert result['n_exposures']==4 and not result['usable_photometry']
     result,_=observe(ToyModel(18),starts,1,np.random.default_rng(1),cfg)
     assert result['outcome']=='detected_unsaturated' and result['usable_photometry']
     result,_=observe(ToyModel(18),starts,0,np.random.default_rng(1),cfg)
@@ -76,7 +76,50 @@ def test_tracking_after_discovery():
     result,audit=observe(Evolving(0),np.arange(4.)[:,None],.1,Draws(),cfg)
     assert result['saturation_s']==3
     assert result['usable_photometry'] and not result['immediate_saturation']
+    assert result['outcome']=='detected_unsaturated'
     assert np.all(audit['in_field'])
+
+
+@pytest.mark.parametrize('durations',[(1.,1.,15.,15.),(1.,30.),(30.,1.)])
+def test_long_saturation_preserves_short_photometry(durations):
+    cfg=replace(Config(),exposures_s=durations)
+    starts=pointing_starts([(0,1000)],0,cfg)
+    _,sat=limits(cfg)
+    mag=(sat.min()+sat.max())/2
+    result,audit=observe(ToyModel(mag),starts,1,np.random.default_rng(1),cfg)
+    assert result['outcome']=='detected_unsaturated'
+    assert result['usable_photometry'] and not result['immediate_saturation']
+    assert np.isnan(result['saturation_s'])
+    assert result['n_pointings']==len(starts)
+    assert audit['saturated'].any() and not audit['saturated'].all()
+    assert result['n_usable_exposures']==len(starts)*durations.count(min(durations))
+
+
+@pytest.mark.parametrize('next_short_mag,expected',[(13.,'detected_unsaturated'),(5.,'detected_saturated')])
+def test_rise_between_short_and_long_exposures(monkeypatch,next_short_mag,expected):
+    cfg=replace(Config(),exposures_s=(1.,30.))
+    starts=np.array([[0.,16.],[61.,77.],[122.,138.]])
+    # First short is too faint; first long saturates. The next short must
+    # still be attempted, and can rescue usable photometry after discovery.
+    mags=np.array([[35.,5.],[next_short_mag,5.],[5.,5.]])
+    monkeypatch.setattr('galsnrubin.simulation.exposure_magnitudes',lambda *args:mags)
+    class Draws:
+        def random(self,n): return np.array([0.,1.,1.])
+    result,audit=observe(ToyModel(0),starts,.1,Draws(),cfg)
+    assert result['outcome']==expected
+    assert result['first_detection_s']==46
+    assert result['n_pointings']==(3 if next_short_mag==13 else 2)
+    assert not result['immediate_saturation']
+    assert result['n_hits']==1 and np.all(audit['in_field'])
+
+
+def test_saturation_requires_every_exposure_valid(monkeypatch):
+    cfg=replace(Config(),exposures_s=(1.,30.))
+    mags=np.array([[5.,np.nan]])
+    monkeypatch.setattr('galsnrubin.simulation.exposure_magnitudes',lambda *args:mags)
+    result,_=observe(ToyModel(0),np.array([[0.,16.]]),1,np.random.default_rng(1),cfg)
+    assert result['outcome']=='detected_saturated' and not result['usable_photometry']
+    assert np.isnan(result['saturation_s']) and not result['immediate_saturation']
 
 
 def test_lightcurve_integration_and_validity():

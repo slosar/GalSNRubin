@@ -124,7 +124,7 @@ def make_products(results, output_dir, config):
     labels = ['Never above\nhorizon', 'Never above\nminimum\naltitude',
               'Not visible\nduring night', 'Moon\navoidance',
               'No complete\npointing', 'No valid\nmodel exposure',
-              'Too faint', 'Search miss', 'Detected\nunsaturated', 'Detected\nsaturated']
+              'Too faint', 'Search miss', 'Detected: usable\nphotometry', 'Detected: only\nsaturated']
     fig,ax = plt.subplots(figsize=(12,4.8))
     for p,g in groups:
         counts = g.outcome.value_counts()
@@ -138,16 +138,16 @@ def make_products(results, output_dir, config):
         ecdf(axes[0],d.first_detection_s/3600,p,colors[p],len(g))
         ecdf(axes[1],d.discovery_mag,p,colors[p])
         ecdf(axes[2],g[g.saturation_s.notna()].saturation_s/3600,p,colors[p],len(g))
-    for ax,xlabel,ylabel in zip(axes,['Hours from trigger to first detection','Discovery AB magnitude','Hours from trigger to first saturation'],['Fraction of all triggers detected','Fraction of detections','Fraction of all triggers saturated']):
+    for ax,xlabel,ylabel in zip(axes,['Hours from trigger to first detection','Discovery AB magnitude','Hours to first fully saturated pointing'],['Fraction of all triggers detected','Fraction of detections','Fraction with all exposure modes saturated']):
         ax.set(xlabel=xlabel,ylabel=ylabel,ylim=(0,1));ax.legend()
     save(fig,'discovery')
     fig,axes = plt.subplots(1,2,figsize=(10,3.8))
     for p,g in groups:
-        values = [g.detected.mean(),g.immediate_saturation.mean(),g.usable_photometry.mean()]
+        values = [g.detected.mean(),(g.outcome=='detected_saturated').mean(),g.usable_photometry.mean()]
         axes[0].plot(range(3),values,'o-',label=p,color=colors[p])
         d=g[g.detected]
         axes[1].scatter(d.first_detection_s/3600,d.discovery_mag,s=9,alpha=.35,label=p,color=colors[p])
-    axes[0].set_xticks(range(3),['Detected','Saturated at\nfirst detection','Any usable\nphotometry'])
+    axes[0].set_xticks(range(3),['Detected','Only saturated\ndetections','Any usable\nphotometry'])
     axes[0].set(ylabel='Fraction of all triggers',ylim=(0,1));axes[0].legend()
     axes[1].set(xlabel='Hours from trigger',ylabel='Discovery AB magnitude');axes[1].invert_yaxis();axes[1].legend()
     save(fig,'saturation')
@@ -200,11 +200,12 @@ def make_products(results, output_dir, config):
     table += [r'\bottomrule\end{longtable}']
     (output/'parameters.tex').write_text('\n'.join(table))
     summary=json.loads((output/'summary.json').read_text())
-    table=[r'\begin{tabular}{lrrrrr}\toprule',r'Type & Detected & Immediate sat. & Usable & Median hours & Median mag \\ \midrule']
+    table=[r'\begin{tabular}{lrrrrr}\toprule',r'Type & Detected & Saturated only & Usable & Median hours & Median mag \\ \midrule']
     for p,s in summary.items():
         h='--' if s['median_detection_hours'] is None else f'{s["median_detection_hours"]:.2f}'
         m='--' if s['median_discovery_mag'] is None else f'{s["median_discovery_mag"]:.2f}'
-        table.append(f'{p} & {s["detected"]}/{s["n"]} & {s["immediate_saturation"]} & {s["usable_photometry"]} & {h} & {m} '+r'\\')
+        saturated_only=int((results.loc[results.progenitor==p,'outcome']=='detected_saturated').sum())
+        table.append(f'{p} & {s["detected"]}/{s["n"]} & {saturated_only} & {s["usable_photometry"]} & {h} & {m} '+r'\\')
     table.append(r'\bottomrule\end{tabular}')
     (output/'results.tex').write_text('\n'.join(table))
 

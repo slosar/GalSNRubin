@@ -23,12 +23,21 @@ operational scheduler or an estimate of the Galactic supernova rate.
 
 \section{Baseline results}
 \begin{center}\small\input{\runpath/results.tex}\end{center}
-Counts of immediate saturation and usable photometry are out of all 1,000
+Counts of saturated-only detections and usable photometry are out of all 1,000
 triggers per type. Median times and magnitudes are conditional on detection.
-Immediate saturation means the first detected exposure saturates; usable means
-at least one detected, unsaturated exposure was obtained. Discovery magnitudes
+Saturated-only means every detected exposure was saturated: no usable detection
+was obtained. Usable means at least one detected, unsaturated exposure was
+obtained, even if longer or later exposures saturated. These two categories
+partition the detections. Discovery magnitudes
 are underlying model magnitudes, even where detector saturation prevents
 ordinary PSF photometry. We optimistically count saturated sources as localized.
+
+Correcting the former stop at the first saturated exposure and the event classification changes
+the saturated-only counts from 702 to 521 (RSG), 708 to 485 (BSG), and 674 to 423
+(WR). Much of this change retains events that already had usable photometry;
+continuing past saturated long exposures additionally recovers usable data for
+2 BSG and 22 WR events. Detection totals, first-detection times and discovery
+magnitudes are unchanged for the same paired sample.
 
 In this baseline, 148 candidates per type exceed the minimum altitude at
 transit but have no nighttime window. The $10^\circ$ Moon cut reduces the
@@ -40,7 +49,7 @@ emission interval; these count as no valid model exposure. RSG and BSG
 detection totals are unchanged, although discovery times and saturation
 statistics can change.
 
-\begin{figure}[ht]\centering
+\begin{figure}[!htbp]\centering
 \includegraphics[width=\linewidth]{outcomes.pdf}
 \caption{Exhaustive, mutually exclusive terminal outcomes. Error bars are
 binomial Monte Carlo standard errors; the three classes share input draws and
@@ -122,8 +131,24 @@ assessed at the true source coordinates, including the Moon veto. No trigger
 centroid or probability-map visibility is generated. Consequently this is an idealized area-ratio search,
 not a deployable localization strategy. The search uniforms are paired between
 progenitor types for each candidate. After the first detection the telescope
-tracks the known source. Observations terminate at the first saturated exposure,
-or otherwise at the deadline; model-expired exposures cannot produce detections.
+tracks the known source. Consecutive exposures are evaluated individually in
+time order, with no independent search draw within a pointing. A saturated
+long exposure does not stop observations while short exposures can still be
+usable. We finish the first pointing in which \emph{all} exposures saturate,
+then stop; otherwise we continue to the deadline. Model-expired exposures
+cannot produce detections or establish saturation.
+
+Event classification retains the full observed history. Any detected,
+unsaturated exposure makes the outcome \texttt{detected\_unsaturated}, including
+when a subsequent pointing saturates in every exposure. Only a source with
+detections but no usable exposure is \texttt{detected\_saturated}. Thus a source
+that jumps from undetectable to saturated in both short and long exposures
+without an observed usable interval is saturated-only. If the first short
+exposures are too faint and the following long exposures saturate, the next
+pointing is still attempted: its short exposures may supply usable photometry.
+The baseline long integration consists of two separate 15 s exposures, not a
+coadded 30 s measurement; the same rule applies to configured 1 s and 30 s
+exposures. Saturation in 30 s alone would not disqualify a usable 1 s detection.
 
 Five midpoint samples integrate flux over each exposure. Any exposure crossing
 the model cutoff is invalid. Single-exposure detection requires SNR $\geq5$;
@@ -142,17 +167,19 @@ are treated as configurable 15 s thresholds, scaled at constant charge by
 $m_{\rm sat}(t)=m_{\rm sat}(15)+2.5\log_{10}(t/15)$.
 These are planning assumptions rather than measured 2027 short-exposure performance.
 
-\begin{figure}[ht]\centering
+\begin{figure}[!htbp]\centering
 \includegraphics[width=\linewidth]{discovery.pdf}
-\caption{Detection time, model brightness at discovery, and first saturation
-time. Time distributions use all triggers as denominator and therefore retain
+\caption{Detection time, model brightness at discovery, and completion time of
+the first fully saturated pointing. The latter is a stopping diagnostic and
+can include sources with earlier usable photometry. Time distributions use all triggers as denominator and therefore retain
 the incompleteness; brightness is conditional on detection. Three curves
 compare progenitors using the same candidate population.}
 \end{figure}
-\begin{figure}[ht]\centering
+\begin{figure}[!htbp]\centering
 \includegraphics[width=\linewidth]{saturation.pdf}
-\caption{Detection and saturation fractions, and the relation between discovery
-time and brightness. Saturated localization need not yield usable photometry.}
+\caption{Detection, saturated-only, and usable-photometry fractions, and the
+relation between discovery time and brightness. The last two fractions sum to
+the detected fraction. Saturated localization need not yield usable photometry.}
 \end{figure}
 
 \section{Miss accounting and limitations}
@@ -168,7 +195,8 @@ reduce observations; events with remaining pointings retain their final
 photometric or search outcome. These mutually exclusive reasons diagnose
 the executed experiment, not a unique causal explanation in the real sky.
 Model expiry is also retained as a separate event diagnostic for modelled events.
-A detected source without saturation remains a successful detection.
+A detected source with any usable photometry remains an unsaturated success,
+even if it later saturates. A saturated-only source is still counted as localized.
 
 Weather, lunar sky brightening, other changing sky, airmass losses, crowding,
 blending, template availability, pipeline failure, slew geometry, normal survey scheduling and
@@ -178,9 +206,8 @@ of extremely saturated sources are assumed. Neither the smooth dust model nor
 canonical progenitor spectra capture the full astrophysical uncertainty.
 The curves quantify the stated model, not guaranteed Rubin performance.
 
-\clearpage
 \section{Sky distributions and extinction}
-\begin{figure}[ht]\centering
+\begin{figure}[!htbp]\centering
 \includegraphics[width=\linewidth]{sky_success.pdf}
 \caption{Successful supernova detections for each progenitor in Galactic
 Mollweide projection. Saturated and unsaturated detections are both included.
@@ -191,7 +218,7 @@ Colours count events in equal-area HEALPix pixels ($N_{\rm side}=32$,
 Light grey pixels contain no selected events. These are population counts,
 not detection efficiencies.}
 \end{figure}
-\begin{figure}[ht]\centering
+\begin{figure}[!htbp]\centering
 \includegraphics[width=\linewidth]{sky_failures.pdf}
 \caption{Failure distributions in the same Galactic projection. Rows compare
 progenitors; columns separate no night visibility, too faint, and search miss.
@@ -200,7 +227,7 @@ Only the three requested failure categories are shown; other outcomes remain
 in the complete accounting in Figure 1. The identical night-visibility panels
 reflect the shared sky positions and trigger dates.}
 \end{figure}
-\begin{figure}[ht]\centering
+\begin{figure}[!htbp]\centering
 \includegraphics[width=.85\linewidth]{av_distribution.pdf}
 \caption{Distribution of the dust model's V-band extinction $A_V$ for the
 1,000 shared candidates, in 2 mag bins. Each candidate is counted once,
@@ -209,20 +236,20 @@ The dashed line marks the median. The full extinction range is included.}
 \end{figure}
 \clearpage
 \section{Quality assurance}
-\begin{figure}[ht]\centering
+\begin{figure}[!htbp]\centering
 \includegraphics[width=\linewidth]{qa_population.pdf}
 \caption{Population, extinction, localization and visibility diagnostics.
 Shared inputs make first-observation distributions coincide across types.
 All discovered events must satisfy the source and solar altitude cuts and
 the Moon separation cut; the latter is checked separately against direct Astropy.}
 \end{figure}
-\begin{figure}[ht]\centering
+\begin{figure}[!htbp]\centering
 \includegraphics[width=\linewidth]{qa_models.pdf}
 \caption{Reference light curves at 10 kpc and $A_V=10$, with detection (dashed)
 and saturation (dotted horizontal) thresholds and breakout delays (vertical).
 The right panel verifies localization scaling and the spherical-cap area.}
 \end{figure}
-\begin{figure}[ht]\centering
+\begin{figure}[!htbp]\centering
 \includegraphics[width=\linewidth]{qa_sampling.pdf}
 \caption{Independent search Monte Carlo against the geometric-distribution
 prediction $1-(1-p)^N$ (dashed), and uniform trigger-date sampling.}
@@ -230,7 +257,9 @@ prediction $1-(1-p)^N$ (dashed), and uniform trigger-date sampling.}
 
 Numerical tests cover cap geometry including full-sky capping, cadence and
 setup, sensitivity and saturation scaling, direct SNR recovery, detection and
-miss categories, tracking after discovery, flux integration and model validity,
+miss categories, tracking after discovery, mixed short/long saturation,
+rapid rises between exposures, usable detections preceding later saturation,
+invalid exposures preventing a fully saturated stop, flux integration and model validity,
 Bernoulli hit statistics, distance conversion, reproducible catalogue sampling,
 configuration validation, Moon-window clipping and disabling, lunar angle
 wrapping, separation of nighttime and lunar failures, and astrometry against
@@ -240,7 +269,11 @@ alongside these integration tests. Full-run checks verify outcome accounting,
 paired candidates, temporal limits and discovery geometry, including lunar
 separation. Saved event diagnostics include the number of night/altitude
 windows, complete pointings before and after the Moon veto, and the
-source--Moon separation at discovery.
+source--Moon separation at discovery. The exposure audit retains individual
+saturation flags, even when the event has usable photometry. The
+\texttt{saturation\_s} field is the end of the first fully saturated pointing;
+\texttt{immediate\_saturation} means that this is also the discovery pointing.
+Neither field overrides the event's usable-photometry classification.
 
 \clearpage
 \section{Configurable parameters}
@@ -253,11 +286,10 @@ above (e.g. uniform row sampling and independent search) are fixed model policie
 {\footnotesize\raggedright\input{\runpath/parameters.tex}}
 
 \section{Reproduction and saved data}
-Use the installation and execution commands in \texttt{GalSNRubin/README.md}.
-\texttt{outputs/baseline\_moon/} stores all 3,000 outcomes, candidates, configuration,
-metadata, summaries, figures, tables and exposure audits for the first three
-candidates per type. Event times ending in \texttt{\_s} are seconds from trigger;
-\texttt{trigger\_unix} is UTC Unix time. The original no-Moon run remains in
-\texttt{outputs/baseline/}. Regenerate products, then compile this report twice
-with \texttt{pdflatex}.
+Reproduction commands are in \texttt{GalSNRubin/README.md}.
+\texttt{outputs/baseline\_moon/} stores all 3,000 outcomes
+and supporting products. Audits cover the first three candidates per type.
+Times ending in \texttt{\_s} are seconds from trigger; \texttt{trigger\_unix} is
+UTC Unix time. \texttt{outputs/baseline/} retains the historical no-Moon run
+with the old saturation rule.
 \end{document}

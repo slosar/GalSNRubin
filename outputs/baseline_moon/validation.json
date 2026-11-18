@@ -5,6 +5,7 @@
   "paired_candidates": "passed",
   "timing": "passed",
   "direct_astropy_visibility": "passed",
+  "saturation_accounting": "passed",
   "astrometry_tolerance_deg": 0.02,
   "moon_avoidance": "passed",
   "night_failure_accounting": "passed",
