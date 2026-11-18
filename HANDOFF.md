@@ -8,21 +8,33 @@ The baseline contains 1,000 shared candidates for each of RSG, BSG and WR, with
 2027 trigger dates. Source, configuration, tests, saved results, exposure audits,
 figure PDFs/PNGs, LaTeX source and the compiled report are included.
 
-The latest additions are Galactic Mollweide success maps, failure maps for no
-night visibility / too faint / search miss, and an extinction histogram counting
-the 1,000 shared candidates once. All are included in the report. Plot regeneration
-uses existing results and does not resimulate events.
+The latest change adds a configurable topocentric Moon exclusion, defaulting to
+10 degrees (`moon_avoidance_deg`; zero disables it). Figure 1 labels the existing
+nighttime category as "Not visible during night" and adds "Moon avoidance."
+The latter means complete pointings could fit without the lunar veto, but none
+fit after it. Partial lunar losses retain the final photometric/search outcome.
+The report narrative and generated parameter table describe these definitions.
+The updated run is in `outputs/baseline_moon/`; the original no-Moon run remains
+in `outputs/baseline/`, with its configuration explicitly pinned to zero radius.
+Galactic success/failure maps and the extinction histogram remain included.
+Plot regeneration uses existing results and does not resimulate events.
 
 ## Baseline results
 
 | Progenitor | Detected / 1,000 | Median delay among detections | Immediately saturated / 1,000 |
 |---|---:|---:|---:|
-| RSG | 794 | 28.52 hours | 520 |
-| BSG | 802 | 9.74 hours | 486 |
-| WR | 777 | 7.16 hours | 446 |
+| RSG | 794 | 28.55 hours | 521 |
+| BSG | 802 | 9.77 hours | 487 |
+| WR | 775 | 7.20 hours | 445 |
 
 Median extinction is Av = 11.33 mag. The outcome maps agree with the event-table
 counts, and the histogram contains exactly 1,000 candidates.
+The nighttime category contains 148 candidates per type. The Moon reduces
+available pointings for 15 candidates, but completely excludes none over three
+days, so its exclusive category has zero counts. Two WR detections are lost
+to delayed observations outside model validity and count as no valid model
+exposure. Pre/post-veto scheduling counts and discovery lunar separations are
+saved in the event table.
 
 ## Validation and reproduction
 
@@ -33,13 +45,14 @@ From the package root, use `.venv/bin/python` in the existing workspace.
 export MPLCONFIGDIR=/tmp/galsnrubin-mpl
 export XDG_CACHE_HOME=/tmp/galsnrubin-cache
 .venv/bin/python -m pytest tests ../CCLightCurves/tests -q
-.venv/bin/python scripts/validate_run.py outputs/baseline
-.venv/bin/python -m galsnrubin.products outputs/baseline
+.venv/bin/python scripts/validate_run.py outputs/baseline_moon
+.venv/bin/python -m galsnrubin.products outputs/baseline_moon
 ```
 
-All 20 tests passed. Full-run accounting, paired candidates, timing and direct
-Astropy visibility checks passed; see `outputs/baseline/validation.json`.
-The 10-page report compiled and its rendered pages were visually checked.
+All 26 tests passed. Full-run accounting, paired candidates, timing and direct
+Astropy visibility checks passed; see `outputs/baseline_moon/validation.json`.
+Maximum discovery lunar-separation error was 0.00034 degrees (0.02 tolerance).
+The report was compiled and its rendered pages were visually checked.
 Compile `report/report.tex` from the `report/` directory twice after plot changes.
 
 ## Inputs and limitations

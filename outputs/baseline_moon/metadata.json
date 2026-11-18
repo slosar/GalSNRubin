@@ -1,0 +1,25 @@
+{
+  "catalog": "TRILEGAL_noLMCSMC_10plusZAMS.pkl",
+  "catalog_sha256": "51d89597e433bd1d58a47e4b3080371bab2ce643b1985397b7019d1e68cd84b9",
+  "versions": {
+    "numpy": "2.4.6",
+    "pandas": "3.1.1",
+    "astropy": "8.0.3",
+    "ccsnlc": "0.1.0",
+    "galdust": "0.1.0",
+    "matplotlib": "3.11.2"
+  },
+  "magnitude_limits": [
+    21.346794893628612,
+    21.346794893628612,
+    23.1920788098819,
+    23.1920788098819
+  ],
+  "saturation_limits": [
+    12.359771852360797,
+    12.359771852360797,
+    15.3,
+    15.3
+  ],
+  "calendar": "Bundled offline IERS; builtin topocentric Moon; geometric altitude; frozen source CIRS per trigger"
+}

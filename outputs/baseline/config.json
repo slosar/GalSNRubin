@@ -68,5 +68,6 @@
   "Rv": 3.1,
   "T_min_eV": 1.0,
   "lightcurve_ngrid": 1200,
-  "audit_candidates": 3
+  "audit_candidates": 3,
+  "moon_avoidance_deg": 0.0
 }

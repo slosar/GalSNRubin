@@ -1,7 +1,7 @@
-"""Offline astrometry and conservative night/altitude observing windows."""
+"""Offline astrometry and sampled night/altitude/Moon observing windows."""
 import numpy as np
 from astropy import units as u
-from astropy.coordinates import EarthLocation, AltAz, get_sun, CIRS
+from astropy.coordinates import EarthLocation, AltAz, get_sun, get_body, CIRS
 from astropy.time import Time
 from astropy.utils import iers
 
@@ -21,7 +21,7 @@ def altitude(ra_rad, dec_rad, era_rad, latitude_deg):
 
 
 class Calendar:
-    """Interpolated solar altitude and Earth rotation angle covering the year.
+    """Interpolated Sun, topocentric Moon and Earth rotation over the year.
 
     CIRS source coordinates are frozen at the trigger over the few-day window.
     Atmospheric refraction is disabled. Future UT1 uses bundled IERS predictions.
@@ -39,6 +39,12 @@ class Calendar:
         self.sun = get_sun(times).transform_to(AltAz(obstime=times, location=self.location,
                                                    pressure=0*u.hPa)).alt.deg
         self.era = np.unwrap(times.earth_rotation_angle(longitude=self.location.lon).rad)
+        # Explicit builtin ephemeris keeps lunar positions offline. Use the same
+        # observer-centred CIRS frame as the source, including lunar parallax.
+        moon = get_body('moon', times, self.location, ephemeris='builtin').transform_to(
+            CIRS(obstime=times, location=self.location))
+        self.moon_ra = np.unwrap(moon.ra.rad)
+        self.moon_dec = moon.dec.rad
         # Linear twilight crossings; calibrated nights may span UTC midnight.
         dark = self.sun < config.twilight_deg
         changes = np.flatnonzero(dark[1:] != dark[:-1])
@@ -53,11 +59,22 @@ class Calendar:
         self.nights = [(a+config.calibration_s,b) for a,b in zip(dusk,dawn)
                        if a+config.calibration_s < b]
 
-    def windows(self, coord, trigger):
+    def moon_separation(self, ra_rad, dec_rad, times):
+        """Source--Moon separation [deg] at Unix times, using CIRS angles [rad]."""
+        moon_ra = np.interp(times, self.grid, self.moon_ra)
+        moon_dec = np.interp(times, self.grid, self.moon_dec)
+        # Haversine form remains accurate for near-coincident directions.
+        hav = (np.sin((dec_rad-moon_dec)/2)**2 +
+               np.cos(dec_rad)*np.cos(moon_dec)*np.sin((ra_rad-moon_ra)/2)**2)
+        return np.rad2deg(2*np.arcsin(np.sqrt(np.clip(hav, 0, 1))))
+
+    def windows(self, coord, trigger, *, avoid_moon=True):
         """Return conservative intervals [unix s], max altitude and CIRS angles.
 
         Boundaries are rounded inward by at most visibility_step_s. Windows
         shorter than the sampling step can be missed (documented resolution).
+        Set avoid_moon=False to retain night/altitude windows for failure
+        accounting. The angular Moon veto is independent of lunar phase.
         """
         cfg = self.config
         cirs = coord.transform_to(CIRS(obstime=Time(trigger,format='unix'),location=self.location))
@@ -71,6 +88,8 @@ class Calendar:
             t = np.unique(np.r_[np.arange(a,b,cfg.visibility_step_s), b])
             alt = altitude(ra, dec, np.interp(t,self.grid,self.era), cfg.latitude_deg)
             good = alt >= cfg.min_alt_deg
+            if avoid_moon and cfg.moon_avoidance_deg > 0:
+                good &= self.moon_separation(ra, dec, t) >= cfg.moon_avoidance_deg
             edges = np.diff(np.r_[False,good,False].astype(int))
             for lo,hi in zip(np.flatnonzero(edges==1), np.flatnonzero(edges==-1)-1):
                 if t[hi] > t[lo]:

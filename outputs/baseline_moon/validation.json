@@ -1,0 +1,14 @@
+{
+  "event_count": 3000,
+  "detected_count": 2371,
+  "accounting": "passed",
+  "paired_candidates": "passed",
+  "timing": "passed",
+  "direct_astropy_visibility": "passed",
+  "astrometry_tolerance_deg": 0.02,
+  "moon_avoidance": "passed",
+  "night_failure_accounting": "passed",
+  "max_moon_separation_error_deg": 0.00033769855303944496,
+  "max_source_alt_error_deg": 0.00042121200549871674,
+  "max_solar_alt_error_deg": 0.019257745170818907
+}

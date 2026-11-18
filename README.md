@@ -24,7 +24,7 @@ git clone https://github.com/slosar/galdust.git DustModel/galdust-repo
 
 Place the input `TRILEGAL_noLMCSMC_10plusZAMS.pkl` in this workspace directory.
 The original catalogue is an external input and is not bundled in this repository;
-its SHA256 is recorded in `outputs/baseline/metadata.json`. The saved baseline
+its SHA256 is recorded in `outputs/baseline_moon/metadata.json`. The saved baseline
 candidate/event tables are bundled, so regenerating figures and inspecting the
 results do not require the original catalogue. Building the report needs a LaTeX
 installation providing `pdflatex` and the packages listed in `report/report.tex`.
@@ -41,8 +41,8 @@ cd GalSNRubin
 export MPLCONFIGDIR=/tmp/galsnrubin-mpl
 export XDG_CACHE_HOME=/tmp/galsnrubin-cache
 .venv/bin/python -m pytest tests ../CCLightCurves/tests -q
-.venv/bin/python -m galsnrubin.cli --catalog ../TRILEGAL_noLMCSMC_10plusZAMS.pkl --output outputs/baseline
-.venv/bin/python scripts/validate_run.py outputs/baseline
+.venv/bin/python -m galsnrubin.cli --catalog ../TRILEGAL_noLMCSMC_10plusZAMS.pkl --output outputs/baseline_moon
+.venv/bin/python scripts/validate_run.py outputs/baseline_moon
 cd report
 pdflatex -interaction=nonstopmode -halt-on-error report.tex
 pdflatex -interaction=nonstopmode -halt-on-error report.tex
@@ -57,7 +57,9 @@ compared with the 60-second visibility sampling. No downloads occur during runs.
 
 All settings are listed in `config/default.json` and in the report. Override any
 subset with `--config my-settings.json`; `--n` overrides the file's candidate count.
-For example `{"band":"i", "min_alt_deg":25, "followup_days":5}`. Use a separate
+For example `{"band":"i", "min_alt_deg":25, "followup_days":5,
+"moon_avoidance_deg":20}`. The Moon exclusion radius defaults to 10 degrees;
+set `moon_avoidance_deg` to 0 to disable it. Use a separate
 output directory for each experiment; rerunning into an existing directory
 replaces that run's products. The report's `\runpath` points to the baseline;
 change it to compile an alternate run.
@@ -82,7 +84,12 @@ change it to compile an alternate run.
 * Night starts 600 s after evening Sun=-18 deg and ends at morning Sun=-18 deg.
   Source altitude is geometric, with no refraction. Source CIRS coordinates are
   frozen at the trigger, with interpolated Earth rotation and solar altitude.
-  Visibility edges round inward by <=60 s; very short windows may be missed.
+  The topocentric source--Moon separation must be at least the configured
+  `moon_avoidance_deg` (10 degrees by default), independent of lunar phase.
+  Astropy's builtin lunar ephemeris is computed offline on the same 300 s grid.
+  Visibility edges round inward by <=60 s; sub-step windows or lunar crossings
+  may be unresolved. The cut gates the true source, like the altitude cut;
+  individual random field centres are not generated.
   Full pointing blocks must fit, including final dead time. Initial filter setup
   costs 90 s after the first eligible instant; it is charged once per event.
 * Each pointing has ordered exposures `[1,1,15,15]` s, each followed by 15 s dead
@@ -96,8 +103,9 @@ change it to compile an alternate run.
   even if no unsaturated exposure exists: this assumes recognisable saturated
   images and **does not establish real pipeline recovery performance**.
 * Sensitivity uses the SMTN-002 count/noise prescription, with fixed dark sky and
-  zenith seeing, read noise and dark current. No airmass penalty, Moon, weather,
-  crowding, blending, templates, normal survey scheduling or telescope contention.
+  zenith seeing, read noise and dark current. No airmass penalty, moonlight sky
+  brightening, weather, crowding, blending, templates, normal survey scheduling
+  or telescope contention.
   The 1 s mode and saturation thresholds are assumptions, not verified operating
   capabilities. Saturation values are historical Science Book fiducials at 15 s.
   These omissions are especially consequential near 15-degree altitude.
@@ -114,10 +122,10 @@ Underlying map and histogram counts are saved in `figures/sky_extinction_counts.
 To regenerate plots and tables from saved events without rerunning the simulation:
 
 ```bash
-.venv/bin/python -m galsnrubin.products outputs/baseline
+.venv/bin/python -m galsnrubin.products outputs/baseline_moon
 ```
 
-`outputs/baseline/` contains `candidates.csv`, `events.csv`, `summary.json`,
+`outputs/baseline_moon/` contains `candidates.csv`, `events.csv`, `summary.json`,
 `config.json`, `metadata.json` (catalogue SHA256 and dependency versions), `validation.json` (full-run checks against direct Astropy),
 `exposure_audit.csv.gz` (first three candidates for every progenitor), figure PDFs
 and PNGs, and generated LaTeX parameter/results tables. NaN means unavailable;
@@ -130,11 +138,22 @@ Miss outcomes are mutually exclusive and assigned in this order:
 
 1. `never_above_horizon`: maximum geometric altitude <=0 degrees.
 2. `never_above_min_alt`: above horizon but never above the configured minimum.
-3. `no_night_visibility`: no simultaneous night/source window before deadline.
-4. `no_complete_pointing`: windows exist but cannot fit setup plus a full block.
-5. `no_valid_model_exposure`: all exposures before breakout or beyond model cutoff.
-6. `too_faint`: some valid model exposures, but none meet depth even if on target.
-7. `search_miss`: detectable opportunities existed, but random search missed them.
+3. `no_night_visibility` (Figure 1: "Not visible during night"): the source
+   exceeds the minimum altitude at transit, but no simultaneous night/source
+   window exists before the deadline, evaluated before the Moon veto.
+4. `moon_avoidance`: complete pointings fit those night/altitude windows without
+   the Moon veto, but none fit after applying it (including setup and dead time).
+5. `no_complete_pointing`: windows exist but intrinsically cannot fit setup plus
+   a full block, even without the Moon veto.
+6. `no_valid_model_exposure`: all exposures before breakout or beyond model cutoff.
+7. `too_faint`: some valid model exposures, but none meet depth even if on target.
+8. `search_miss`: detectable opportunities existed, but random search missed them.
+
+Partial lunar losses can delay discovery or reduce the available search, but
+events with remaining pointings retain their final photometric/search outcome.
+`n_night_windows`, `n_pointings_without_moon`, and `n_scheduled_pointings` retain
+the pre-veto windows and before/after scheduling counts; `n_windows` counts
+Moon-safe windows. `discovery_moon_sep_deg` records the discovery separation.
 
 Detections end as `detected_saturated` or `detected_unsaturated` (deadline or model
 cutoff reached without saturation). `model_expired_by_deadline` flags expiry for
@@ -145,6 +164,11 @@ exposure**. `usable_photometry` means at least one detected unsaturated exposure
 it can be true even when a later exposure saturates. `n_hits` counts successful
 random search draws within used pointing blocks, not tracked-field observations.
 Repeated exposure rows share a pointing's FOV result. Audits stop at saturation.
+
+The original run without Moon avoidance remains in `outputs/baseline/`; its
+configuration explicitly records `moon_avoidance_deg=0`. The updated report
+and reproduction commands use `outputs/baseline_moon/`. Figure 1 now labels
+the existing nighttime category explicitly and adds Moon avoidance.
 
 ## Scientific inputs
 

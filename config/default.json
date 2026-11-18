@@ -12,6 +12,7 @@
   "longitude_deg": -70.749417,
   "elevation_m": 2647.0,
   "min_alt_deg": 15.0,
+  "moon_avoidance_deg": 10.0,
   "twilight_deg": -18.0,
   "calibration_s": 600.0,
   "filter_change_s": 90.0,

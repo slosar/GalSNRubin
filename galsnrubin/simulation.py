@@ -105,6 +105,24 @@ def observe(model, starts, probability, rng, config):
     return summary,audit
 
 
+def visibility_failure(maxalt, night_windows, night_starts, starts, config):
+    """Exclusive geometric/scheduling miss, or None when pointings can proceed.
+
+    Moon avoidance means that complete blocks fit without the Moon veto, but
+    none fit with it. Partial lunar losses retain their final observed outcome.
+    All window and pointing times are seconds; maxalt is in degrees.
+    """
+    if maxalt <= 0:
+        return 'never_above_horizon'
+    if maxalt <= config.min_alt_deg:
+        return 'never_above_min_alt'
+    if not night_windows:
+        return 'no_night_visibility'
+    if not len(starts):
+        return 'moon_avoidance' if len(night_starts) else 'no_complete_pointing'
+    return None
+
+
 def run(catalog_path, output_dir, config):
     """Run all progenitors, write reproducible event records and exposure audits."""
     output = Path(output_dir)
@@ -112,33 +130,34 @@ def run(catalog_path, output_dir, config):
     config.save(output/'config.json')
     candidates = sample_catalog(catalog_path,config)
     candidates.to_csv(output/'candidates.csv',index=False)
-    print('Building offline solar/visibility calendar...',flush=True)
+    print('Building offline Sun/Moon/visibility calendar...',flush=True)
     calendar = Calendar(config)
     coords = SkyCoord(candidates.ra.to_numpy()*u.deg,candidates.dec.to_numpy()*u.deg)
     depth,satlimit = limits(config)
     rows,audits = [],[]
     for event, candidate in candidates.iterrows():
+        night_windows,_,_ = calendar.windows(coords[event],candidate.trigger_unix,avoid_moon=False)
+        night_starts = pointing_starts(night_windows,candidate.trigger_unix,config)
         windows,maxalt,angles = calendar.windows(coords[event],candidate.trigger_unix)
         starts = pointing_starts(windows,candidate.trigger_unix,config)
+        failure = visibility_failure(maxalt,night_windows,night_starts,starts,config)
         for prog in config.progenitors:
             row = dict(candidate_id=event,progenitor=prog,**candidate.to_dict(),
                        trigger_utc=Time(candidate.trigger_unix,format='unix').isot,
                        max_alt_deg=maxalt, n_windows=len(windows),
+                       n_night_windows=len(night_windows),
+                       n_pointings_without_moon=len(night_starts),
+                       n_scheduled_pointings=len(starts),
                        first_observation_s=float(starts[0,0]) if len(starts) else np.nan,
                        detected=False,first_detection_s=np.nan,discovery_mag=np.nan,
                        discovery_exposure_s=np.nan,immediate_saturation=False,
                        saturation_s=np.nan,usable_photometry=False,n_pointings=0,n_hits=0,
                        n_exposures=0,n_valid_exposures=0,n_detectable_exposures=0,
                        n_detected_exposures=0,n_usable_exposures=0,model_expired_by_deadline=False,
-                       discovery_alt_deg=np.nan,discovery_sun_alt_deg=np.nan)
-            if maxalt <= 0:
-                row['outcome'] = 'never_above_horizon'
-            elif maxalt <= config.min_alt_deg:
-                row['outcome'] = 'never_above_min_alt'
-            elif not windows:
-                row['outcome'] = 'no_night_visibility'
-            elif not len(starts):
-                row['outcome'] = 'no_complete_pointing'
+                       discovery_alt_deg=np.nan,discovery_sun_alt_deg=np.nan,
+                       discovery_moon_sep_deg=np.nan)
+            if failure is not None:
+                row['outcome'] = failure
             else:
                 model = LightCurveModel(prog,candidate.distance_kpc,candidate.Av,
                          bands=(config.band,),Rv=config.Rv,T_min_eV=config.T_min_eV,
@@ -151,6 +170,7 @@ def run(catalog_path, output_dir, config):
                     t = candidate.trigger_unix+summary['first_detection_s']
                     row['discovery_alt_deg'] = float(altitude(*angles,np.interp(t,calendar.grid,calendar.era),config.latitude_deg))
                     row['discovery_sun_alt_deg'] = float(np.interp(t,calendar.grid,calendar.sun))
+                    row['discovery_moon_sep_deg'] = float(calendar.moon_separation(*angles,t))
                 if event < config.audit_candidates:
                     a = pd.DataFrame(audit)
                     a['candidate_id'],a['progenitor'] = event,prog
@@ -176,6 +196,6 @@ def run(catalog_path, output_dir, config):
          catalog_sha256=hashlib.sha256(Path(catalog_path).read_bytes()).hexdigest(),
          versions={p:version(p) for p in ['numpy','pandas','astropy','ccsnlc','galdust','matplotlib']},
          magnitude_limits=depth.tolist(),saturation_limits=satlimit.tolist(),
-         calendar='Bundled offline IERS; geometric altitude; frozen CIRS per trigger')
+         calendar='Bundled offline IERS; builtin topocentric Moon; geometric altitude; frozen source CIRS per trigger')
     (output/'metadata.json').write_text(json.dumps(metadata,indent=2))
     return results

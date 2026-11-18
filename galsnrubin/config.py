@@ -19,12 +19,13 @@ class Config:
     longitude_deg: float = setting(-70.749417, "East-positive site longitude [deg]")
     elevation_m: float = setting(2647., "Site elevation [m]")
     min_alt_deg: float = setting(15., "Minimum geometric source altitude [deg]")
+    moon_avoidance_deg: float = setting(10., "Minimum source--Moon separation [deg]; 0 disables")
     twilight_deg: float = setting(-18., "Solar altitude at astronomical twilight [deg]")
     calibration_s: float = setting(600., "Delay after evening twilight [s]")
     filter_change_s: float = setting(90., "Initial setup after first eligible instant [s]")
     followup_days: float = setting(3., "Follow-up deadline after trigger [days]")
     visibility_step_s: float = setting(60., "Conservative visibility sampling interval [s]")
-    ephemeris_step_s: float = setting(300., "Solar altitude and Earth angle grid [s]")
+    ephemeris_step_s: float = setting(300., "Sun, Moon and Earth rotation grid [s]")
     theta25_deg: float = setting(30., "Search cap radius at reference distance [deg]")
     reference_distance_kpc: float = setting(25., "Localization reference distance [kpc]")
     fov_deg2: float = setting(9.6, "Effective field of view [square deg]")
@@ -65,6 +66,8 @@ class Config:
             raise ValueError('unique canonical progenitors required')
         if not 0 <= self.min_alt_deg < 90 or not -90 < self.twilight_deg < 0:
             raise ValueError('invalid altitude thresholds')
+        if not 0 <= self.moon_avoidance_deg <= 180:
+            raise ValueError('moon_avoidance_deg must be finite and in 0..180')
         if not -90 <= self.latitude_deg <= 90 or not -180 <= self.longitude_deg <= 180:
             raise ValueError('invalid observatory coordinates')
         if not np.isfinite(self.elevation_m):

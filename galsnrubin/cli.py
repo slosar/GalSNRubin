@@ -8,7 +8,7 @@ from .simulation import run
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--catalog',required=True,help='Trusted TRILEGAL pandas pickle')
-    parser.add_argument('--output',default='outputs/baseline')
+    parser.add_argument('--output',default='outputs/baseline_moon')
     parser.add_argument('--config',help='JSON settings; omitted fields use defaults')
     parser.add_argument('--n',type=int,help='Override candidates per progenitor')
     args = parser.parse_args()

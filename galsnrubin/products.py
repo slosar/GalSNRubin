@@ -119,14 +119,18 @@ def make_products(results, output_dir, config):
         else:
             ax.plot([],[],label=label+' (none)',color=color)
     groups = [(p,results[results.progenitor==p]) for p in config.progenitors]
-    outcomes = ['never_above_horizon','never_above_min_alt','no_night_visibility','no_complete_pointing',
+    outcomes = ['never_above_horizon','never_above_min_alt','no_night_visibility','moon_avoidance','no_complete_pointing',
                 'no_valid_model_exposure','too_faint','search_miss','detected_unsaturated','detected_saturated']
-    fig,ax = plt.subplots(figsize=(10,4.5))
+    labels = ['Never above\nhorizon', 'Never above\nminimum\naltitude',
+              'Not visible\nduring night', 'Moon\navoidance',
+              'No complete\npointing', 'No valid\nmodel exposure',
+              'Too faint', 'Search miss', 'Detected\nunsaturated', 'Detected\nsaturated']
+    fig,ax = plt.subplots(figsize=(12,4.8))
     for p,g in groups:
         counts = g.outcome.value_counts()
         rates = np.array([counts.get(o,0)/len(g) for o in outcomes])
         ax.errorbar(np.arange(len(outcomes)),rates,yerr=np.sqrt(rates*(1-rates)/len(g)),marker='o',label=p,color=colors[p],capsize=3)
-    ax.set_xticks(np.arange(len(outcomes)),[o.replace('_','\n') for o in outcomes],fontsize=8)
+    ax.set_xticks(np.arange(len(outcomes)),labels,fontsize=10)
     ax.set_ylabel('Fraction of all triggers (1 sigma MC error)');ax.legend();save(fig,'outcomes')
     fig,axes = plt.subplots(1,3,figsize=(12,3.8))
     for p,g in groups:

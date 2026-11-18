@@ -1,0 +1,73 @@
+{
+  "n_candidates": 1000,
+  "seed": 2027,
+  "year": 2027,
+  "progenitors": [
+    "RSG",
+    "BSG",
+    "WR"
+  ],
+  "band": "z",
+  "latitude_deg": -30.244633,
+  "longitude_deg": -70.749417,
+  "elevation_m": 2647.0,
+  "min_alt_deg": 15.0,
+  "moon_avoidance_deg": 10.0,
+  "twilight_deg": -18.0,
+  "calibration_s": 600.0,
+  "filter_change_s": 90.0,
+  "followup_days": 3.0,
+  "visibility_step_s": 60.0,
+  "ephemeris_step_s": 300.0,
+  "theta25_deg": 30.0,
+  "reference_distance_kpc": 25.0,
+  "fov_deg2": 9.6,
+  "exposures_s": [
+    1.0,
+    1.0,
+    15.0,
+    15.0
+  ],
+  "dead_time_s": 15.0,
+  "integration_samples": 5,
+  "snr_threshold": 5.0,
+  "zeropoints": [
+    26.52,
+    28.51,
+    28.36,
+    28.17,
+    27.78,
+    26.82
+  ],
+  "sky_mags": [
+    23.05,
+    22.25,
+    21.2,
+    20.46,
+    19.61,
+    18.6
+  ],
+  "seeing_arcsec": [
+    0.92,
+    0.87,
+    0.83,
+    0.8,
+    0.78,
+    0.76
+  ],
+  "saturation15_mags": [
+    14.7,
+    15.7,
+    15.8,
+    15.8,
+    15.3,
+    13.9
+  ],
+  "pixel_scale_arcsec": 0.2,
+  "read_noise_e": 8.8,
+  "dark_current_e_s": 0.2,
+  "Rv": 3.1,
+  "T_min_eV": 1.0,
+  "lightcurve_ngrid": 1200,
+  "audit_candidates": 3
+}

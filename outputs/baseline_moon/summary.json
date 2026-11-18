@@ -1,0 +1,51 @@
+{
+  "RSG": {
+    "n": 1000,
+    "detected": 794,
+    "immediate_saturation": 521,
+    "usable_photometry": 273,
+    "median_detection_hours": 28.546869840886856,
+    "median_discovery_mag": 9.228478461137502,
+    "outcomes": {
+      "detected_saturated": 702,
+      "no_night_visibility": 148,
+      "detected_unsaturated": 92,
+      "too_faint": 34,
+      "search_miss": 21,
+      "no_complete_pointing": 3
+    }
+  },
+  "BSG": {
+    "n": 1000,
+    "detected": 802,
+    "immediate_saturation": 487,
+    "usable_photometry": 315,
+    "median_detection_hours": 9.765212596853575,
+    "median_discovery_mag": 10.754478712025987,
+    "outcomes": {
+      "detected_saturated": 708,
+      "no_night_visibility": 148,
+      "detected_unsaturated": 94,
+      "too_faint": 28,
+      "search_miss": 19,
+      "no_complete_pointing": 3
+    }
+  },
+  "WR": {
+    "n": 1000,
+    "detected": 775,
+    "immediate_saturation": 445,
+    "usable_photometry": 330,
+    "median_detection_hours": 7.204291413625081,
+    "median_discovery_mag": 11.45381844539072,
+    "outcomes": {
+      "detected_saturated": 674,
+      "no_night_visibility": 148,
+      "detected_unsaturated": 101,
+      "too_faint": 38,
+      "search_miss": 30,
+      "no_valid_model_exposure": 6,
+      "no_complete_pointing": 3
+    }
+  }
+}

@@ -3,11 +3,11 @@ import numpy as np
 import pandas as pd
 import pytest
 from astropy import units as u
-from astropy.coordinates import SkyCoord, AltAz, CIRS
+from astropy.coordinates import SkyCoord, AltAz, CIRS, EarthLocation, get_body
 from astropy.time import Time
 from ccsnlc import LightCurveModel
 from galsnrubin import Config
-from galsnrubin.simulation import localization, observe, sample_catalog
+from galsnrubin.simulation import localization, observe, sample_catalog, visibility_failure
 from galsnrubin.photometry import limits, exposure_magnitudes
 from galsnrubin.visibility import maximum_altitude, altitude, pointing_starts, Calendar
 
@@ -123,9 +123,85 @@ def test_astrometry_and_windows():
     assert np.all(exact>=cfg.min_alt_deg-.02)
     for a,b in windows:
         assert any(a>=dusk and b<=dawn for dusk,dawn in cal.nights)
+    moon = get_body('moon',t,cal.location,ephemeris='builtin').transform_to(
+        AltAz(obstime=t,location=cal.location,pressure=0*u.hPa))
+    exact_sep = coord.transform_to(AltAz(obstime=t,location=cal.location,pressure=0*u.hPa)).separation(moon).deg
+    np.testing.assert_allclose(cal.moon_separation(*angles,t.unix),exact_sep,atol=.02)
+    assert np.all(exact_sep >= cfg.moon_avoidance_deg-.02)
+
+
+def test_moon_windows_and_night_failure():
+    # Controlled CIRS geometry: the source stays high while the Moon moves
+    # from 0 to 30 to 0 degrees away. This also exercises inward edge rounding.
+    cfg=Config()
+    cal=Calendar.__new__(Calendar)
+    cal.config=cfg
+    cal.location=EarthLocation.from_geodetic(cfg.longitude_deg*u.deg,cfg.latitude_deg*u.deg)
+    trigger=Time('2027-07-01').unix
+    cal.grid=trigger+np.array([0.,300.,600.])
+    cal.era=np.zeros(3)
+    cal.moon_ra=np.deg2rad([0.,30.,0.])
+    cal.moon_dec=np.zeros(3)
+    cal.nights=[(trigger,trigger+600)]
+    coord=SkyCoord(ra=0*u.deg,dec=0*u.deg,
+                   frame=CIRS(obstime=Time(trigger,format='unix'),location=cal.location))
+    raw,maxalt,_=cal.windows(coord,trigger,avoid_moon=False)
+    filtered,_,_=cal.windows(coord,trigger)
+    np.testing.assert_allclose(np.array(raw)-trigger,[[0,600]],atol=1e-6)
+    np.testing.assert_allclose(np.array(filtered)-trigger,[[120,480]],atol=1e-6)
+    starts=pointing_starts(filtered,trigger,cfg)
+    assert len(starts)>0
+    assert np.all(starts>=120)
+    assert np.all(starts+np.asarray(cfg.exposures_s)+cfg.dead_time_s<=480)
+    raw_starts=pointing_starts(raw,trigger,cfg)
+    assert visibility_failure(maxalt,raw,raw_starts,starts,cfg) is None
+
+    # A lunar passage inside a night must split the window; no block may bridge it.
+    cal.moon_ra=np.deg2rad([30.,0.,30.])
+    split,_,_=cal.windows(coord,trigger)
+    np.testing.assert_allclose(np.array(split)-trigger,[[0,180],[420,600]],atol=1e-6)
+    starts=pointing_starts(split,trigger,cfg)
+    assert len(starts)==1 and starts[0,0]==pytest.approx(420,abs=1e-6)
+
+    # Both surviving windows are too short, though a complete block fit before
+    # the veto: this must still count as Moon avoidance, not a cadence failure.
+    cal.config=replace(cfg,moon_avoidance_deg=20)
+    narrow,_,_=cal.windows(coord,trigger)
+    assert narrow
+    starts=pointing_starts(narrow,trigger,cfg)
+    assert not len(starts)
+    assert visibility_failure(maxalt,raw,raw_starts,starts,cfg)=='moon_avoidance'
+
+    cal.config=replace(cfg,moon_avoidance_deg=180)
+    blocked,_,_=cal.windows(coord,trigger)
+    assert not blocked
+    assert visibility_failure(maxalt,raw,raw_starts,pointing_starts(blocked,trigger,cfg),cfg)=='moon_avoidance'
+    cal.config=replace(cfg,moon_avoidance_deg=0)
+    assert cal.windows(coord,trigger)[0]==raw
+
+    # It still transits above min altitude, but is below it during this night.
+    cal.era=np.full(3,np.pi)
+    night,maxalt,_=cal.windows(coord,trigger,avoid_moon=False)
+    assert maxalt>cfg.min_alt_deg and not night
+    assert visibility_failure(maxalt,night,[],[],cfg)=='no_night_visibility'
+    # Distinguish intrinsic setup/block-length failures from lunar rejection.
+    assert visibility_failure(maxalt,[(0,100)],[],[],cfg)=='no_complete_pointing'
+    assert visibility_failure(-1,[],[],[],cfg)=='never_above_horizon'
+    assert visibility_failure(10,[],[],[],cfg)=='never_above_min_alt'
+
+
+def test_moon_interpolation_wrap_and_extremes():
+    cal=Calendar.__new__(Calendar)
+    cal.grid=np.array([0.,60.])
+    cal.moon_ra=np.unwrap(np.deg2rad([359.,1.]))
+    cal.moon_dec=np.zeros(2)
+    assert cal.moon_separation(0.,0.,30.)==pytest.approx(0.,abs=1e-10)
+    assert cal.moon_separation(np.pi,0.,30.)==pytest.approx(180.,abs=1e-10)
 
 
 @pytest.mark.parametrize('kwargs',[{'band':'zz'},{'exposures_s':[]},{'min_alt_deg':90},
-    {'followup_days':0},{'n_candidates':1.2},{'read_noise_e':-1},{'seeing_arcsec':(1,)}])
+    {'followup_days':0},{'n_candidates':1.2},{'read_noise_e':-1},{'seeing_arcsec':(1,)},
+    {'moon_avoidance_deg':-1},{'moon_avoidance_deg':181},
+    {'moon_avoidance_deg':np.nan},{'moon_avoidance_deg':np.inf}])
 def test_invalid_config(kwargs):
     with pytest.raises(ValueError): Config(**kwargs)

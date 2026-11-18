@@ -3,8 +3,8 @@
 \usepackage{graphicx,booktabs,longtable,amsmath,array}
 \usepackage[T1]{fontenc}
 \usepackage[hidelinks]{hyperref}
-\newcommand{\runpath}{../outputs/baseline}
-\graphicspath{{../outputs/baseline/figures/}}
+\newcommand{\runpath}{../outputs/baseline_moon}
+\graphicspath{{../outputs/baseline_moon/figures/}}
 \title{Galactic supernova follow-up with Rubin\\\large A neutrino-triggered Monte Carlo forecast}
 \author{GalSNRubin simulation}
 \date{Baseline experiment: triggers in 2027}
@@ -15,7 +15,8 @@ We simulate 1,000 catalogue-sampled Galactic supernova locations and trigger dat
 for each of three canonical progenitors (RSG, BSG and WR). The same candidates
 are reused across the three models. GNILC-rescaled dust extinction feeds the
 existing early light-curve package; an idealized Rubin search then includes
-night, source altitude, setup, pointing probability, exposure depth and
+night, source altitude, a configurable Moon exclusion, setup, pointing
+probability, exposure depth and
 saturation. This is a conditional forecast of an idealized response, not an
 operational scheduler or an estimate of the Galactic supernova rate.
 \end{abstract}
@@ -29,11 +30,25 @@ at least one detected, unsaturated exposure was obtained. Discovery magnitudes
 are underlying model magnitudes, even where detector saturation prevents
 ordinary PSF photometry. We optimistically count saturated sources as localized.
 
+In this baseline, 148 candidates per type exceed the minimum altitude at
+transit but have no nighttime window. The $10^\circ$ Moon cut reduces the
+available pointing count for 15 of the 1,000 shared candidates, but leaves
+some complete pointings for each: the exclusive Moon-avoidance category is
+therefore zero. Relative to the saved run without lunar avoidance, two WR
+detections are lost because the remaining exposures fall outside the valid
+emission interval; these count as no valid model exposure. RSG and BSG
+detection totals are unchanged, although discovery times and saturation
+statistics can change.
+
 \begin{figure}[ht]\centering
 \includegraphics[width=\linewidth]{outcomes.pdf}
 \caption{Exhaustive, mutually exclusive terminal outcomes. Error bars are
 binomial Monte Carlo standard errors; the three classes share input draws and
-are correlated. Physical and operational systematics are not in these errors.}
+are correlated. ``Not visible during night'' means the source exceeds the
+minimum altitude at transit but has no night/altitude window before the
+deadline. ``Moon avoidance'' means such windows could accommodate a complete
+pointing without the Moon cut, but none can with it. Physical and operational
+systematics are not in these errors.}
 \end{figure}
 
 \section{Population and emission model}
@@ -64,12 +79,25 @@ then sources that never exceed the minimum altitude. A night starts ten minutes
 after evening astronomical twilight and ends at morning astronomical twilight.
 A source must be above the minimum altitude during that night. A three-day
 follow-up deadline is measured from the trigger, not from the first exposure.
-The date range can cross into 2028 for late-December triggers.
+The date range can cross into 2028 for late-December triggers. Sources that
+exceed the altitude threshold at transit but have no such nighttime window
+are classified as ``not visible during night,'' separately from sources that
+never reach the altitude threshold.
 
-Astropy supplies Sun positions, Earth rotation and CIRS coordinates. A source's
+Within those windows, the angular separation between the source and the
+topocentric Moon must be at least $10^\circ$ in the baseline. The exclusion
+radius is configurable through \texttt{moon\_avoidance\_deg}; zero disables
+the cut. The veto is independent of lunar phase and applies to the full
+pointing block. It is a geometric exclusion only: lunar sky brightening
+outside the avoidance region is not modelled.
+
+Astropy supplies Sun and Moon positions, Earth rotation and CIRS coordinates.
+The Moon uses Astropy's offline builtin ephemeris and the observatory's
+topocentric CIRS frame, including lunar parallax. A source's
 CIRS coordinates are frozen at trigger time for its short follow-up; a 300 s
-solar/rotation grid is interpolated. Visibility boundaries are rounded inward
-on a 60 s grid; very short windows may be missed. Refraction is disabled.
+solar/lunar/rotation grid is interpolated (with unwrapped lunar right ascension).
+Visibility boundaries are rounded inward on a 60 s grid; sub-step windows or
+lunar crossings may be unresolved. Refraction is disabled.
 Future Earth orientation uses bundled IERS data with no downloads; polar motion
 beyond the prediction range defaults to a long-term mean, with arcsecond-scale
 accuracy. This is adequate for the present timing resolution.
@@ -79,7 +107,7 @@ once; it may complete during a subsequent gap. Each pointing contains
 $1,1,15,15$ s exposures, each followed by 15 s dead time including repositioning:
 $T_{\rm point}=92$ s. Only complete blocks fitting within a visibility window are
 scheduled, including the last dead time. Observing pauses across daylight or
-low-altitude intervals and resumes in the next eligible window.
+low-altitude or Moon-excluded intervals and resumes in the next eligible window.
 
 \section{Localization and photometry}
 We interpret the prescribed uncertainty as a spherical-cap \emph{radius}:
@@ -90,8 +118,8 @@ p_{\rm hit}&=\min(1,9.6\,{\rm deg}^2/A).
 \end{align}
 Each pointing draws independently with replacement. Its exposures share one
 FOV result; this is not a tiling without replacement. Source visibility is
-assessed at the true source coordinates. No trigger centroid or probability-map
-visibility is generated. Consequently this is an idealized area-ratio search,
+assessed at the true source coordinates, including the Moon veto. No trigger
+centroid or probability-map visibility is generated. Consequently this is an idealized area-ratio search,
 not a deployable localization strategy. The search uniforms are paired between
 progenitor types for each candidate. After the first detection the telescope
 tracks the known source. Observations terminate at the first saturated exposure,
@@ -129,15 +157,21 @@ time and brightness. Saturated localization need not yield usable photometry.}
 
 \section{Miss accounting and limitations}
 The ordered rejection reasons are: never above horizon; never above minimum
-altitude; no night visibility within the deadline; no complete pointing fits;
-no valid model exposure; too faint in all valid exposures; and search miss despite
-at least one detectable opportunity. These mutually exclusive reasons diagnose
+altitude; not visible during night within the deadline (before the lunar cut);
+Moon avoidance; no complete pointing fits; no valid model exposure; too faint
+in all valid exposures; and search miss despite at least one detectable
+opportunity. Moon avoidance is assigned when complete pointings, including
+setup and dead time, could fit without the lunar veto but none fit with it.
+If the windows cannot fit a complete pointing even without the veto, the
+outcome is instead no complete pointing. Partial lunar losses can delay or
+reduce observations; events with remaining pointings retain their final
+photometric or search outcome. These mutually exclusive reasons diagnose
 the executed experiment, not a unique causal explanation in the real sky.
 Model expiry is also retained as a separate event diagnostic for modelled events.
 A detected source without saturation remains a successful detection.
 
-Weather, Moon, changing sky, airmass losses, crowding, blending, template
-availability, pipeline failure, slew geometry, normal survey scheduling and
+Weather, lunar sky brightening, other changing sky, airmass losses, crowding,
+blending, template availability, pipeline failure, slew geometry, normal survey scheduling and
 resource contention are omitted. At the 15-degree altitude threshold, using
 zenith sensitivity is particularly optimistic. A 1 s exposure mode and recovery
 of extremely saturated sources are assumed. Neither the smooth dust model nor
@@ -179,7 +213,8 @@ The dashed line marks the median. The full extinction range is included.}
 \includegraphics[width=\linewidth]{qa_population.pdf}
 \caption{Population, extinction, localization and visibility diagnostics.
 Shared inputs make first-observation distributions coincide across types.
-All discovered events must satisfy the source and solar altitude cuts.}
+All discovered events must satisfy the source and solar altitude cuts and
+the Moon separation cut; the latter is checked separately against direct Astropy.}
 \end{figure}
 \begin{figure}[ht]\centering
 \includegraphics[width=\linewidth]{qa_models.pdf}
@@ -197,10 +232,15 @@ Numerical tests cover cap geometry including full-sky capping, cadence and
 setup, sensitivity and saturation scaling, direct SNR recovery, detection and
 miss categories, tracking after discovery, flux integration and model validity,
 Bernoulli hit statistics, distance conversion, reproducible catalogue sampling,
-configuration validation, and astrometry against direct Astropy AltAz positions
+configuration validation, Moon-window clipping and disabling, lunar angle
+wrapping, separation of nighttime and lunar failures, and astrometry against
+direct Astropy AltAz positions
 (0.02 degree absolute tolerance). Existing light-curve regression tests are run
 alongside these integration tests. Full-run checks verify outcome accounting,
-paired candidates, temporal limits and discovery geometry.
+paired candidates, temporal limits and discovery geometry, including lunar
+separation. Saved event diagnostics include the number of night/altitude
+windows, complete pointings before and after the Moon veto, and the
+source--Moon separation at discovery.
 
 \clearpage
 \section{Configurable parameters}
@@ -214,10 +254,10 @@ above (e.g. uniform row sampling and independent search) are fixed model policie
 
 \section{Reproduction and saved data}
 Use the installation and execution commands in \texttt{GalSNRubin/README.md}.
-\texttt{outputs/baseline/} stores candidates, all 3,000 event outcomes, configuration,
-dependency versions, catalogue hash, statistical summaries, figure PDFs/PNGs and
-LaTeX tables. The first three candidates of each progenitor retain compressed
-exposure audits. All event times ending in \texttt{\_s} are seconds from trigger;
-\texttt{trigger\_unix} is UTC Unix time. Missing values mark unavailable measurements.
-Recompile this report twice with \texttt{pdflatex} after regenerating the baseline.
+\texttt{outputs/baseline\_moon/} stores all 3,000 outcomes, candidates, configuration,
+metadata, summaries, figures, tables and exposure audits for the first three
+candidates per type. Event times ending in \texttt{\_s} are seconds from trigger;
+\texttt{trigger\_unix} is UTC Unix time. The original no-Moon run remains in
+\texttt{outputs/baseline/}. Regenerate products, then compile this report twice
+with \texttt{pdflatex}.
 \end{document}
