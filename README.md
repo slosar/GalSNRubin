@@ -200,3 +200,10 @@ original no-Moon run is historical and uses the old first-saturated-exposure rul
 `photometry.py`: exposure integration and instrument limits. `simulation.py`:
 catalogue, search state and results. `products.py`: figures and tables.
 `tests/`: numerical and behavioural checks. `report/`: LaTeX source and PDF.
+
+Outcome trends (`figures/outcomes_by_*.pdf` and `.png`) resolve all Figure 1
+categories versus distance, Galactic latitude/longitude, Av, UTC trigger month,
+localization radius and maximum altitude. Fractions use all triggers in each bin,
+with separate progenitor panels and shared candidate counts. Empty bins are blank;
+`figures/outcome_trends.csv` records bin edges, denominators and category counts.
+Regenerate them with the existing products command; no simulation rerun is needed.

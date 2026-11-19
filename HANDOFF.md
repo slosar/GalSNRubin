@@ -8,7 +8,7 @@ The baseline contains 1,000 shared candidates for each of RSG, BSG and WR, with
 2027 trigger dates. Source, configuration, tests, saved results, exposure audits,
 figure PDFs/PNGs, LaTeX source and the compiled report are included.
 
-The latest change fixes saturation accounting: complete the first pointing in
+The saturation correction fixes accounting: complete the first pointing in
 which all exposures saturate before stopping, and classify any event with at
 least one usable detection as `detected_unsaturated`, even if it later saturates.
 Long-exposure saturation alone no longer stops subsequent short exposures.
@@ -88,3 +88,20 @@ limitations are explained in README.md and the report.
 
 There is no outstanding implementation request at handoff. The next session can
 start from the saved results without repeating the Monte Carlo run.
+
+Outcome-trend plots now cover distance, Galactic latitude/longitude, Av, month,
+localization radius and maximum altitude. They use all triggers in each bin,
+show shared candidate counts, and export `figures/outcome_trends.csv`. All bin
+counts were checked against the saved events; all 32 tests pass. The report
+includes all seven plots. Simulation outputs were reused without changing physics.
+
+## Exit checkpoint (2026-11-19)
+
+All requested outcome plots are implemented in `galsnrubin/products.py` and
+included in Section 7 of the rebuilt 17-page report. PDF/PNG plots and the
+binned CSV are saved under `outputs/baseline_moon/figures/`. Empty bins stay
+blank, and the latitude/altitude axes cover the sampled ranges. These are
+marginal distributions, not causal effects; sparse bins have no error bands.
+The report was compiled twice and visually inspected, with no overfull boxes.
+All 32 tests passed, and all seven binned tables reproduce the event counts.
+No simulation rerun is needed to resume. No outstanding requested work remains.

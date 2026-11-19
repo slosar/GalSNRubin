@@ -235,6 +235,60 @@ not once per progenitor; repeated catalogue draws are distinct candidates.
 The dashed line marks the median. The full extinction range is included.}
 \end{figure}
 \clearpage
+\section{Outcome dependence on candidate properties}
+The following plots resolve every Figure 1 category as a function of distance,
+Galactic latitude and longitude, dust extinction, UTC trigger month, localization
+cap radius, and maximum geometric altitude. Within each bin, coloured fractions
+use all triggers of that progenitor as the denominator, including successes;
+thus occupied bins sum to unity. These are not fractions conditional on failure.
+The bottom panel counts the shared candidates once each. Empty bins remain blank;
+small counts imply large sampling uncertainty, and no error bands are shown.
+All categories retain the same colours, including categories with zero counts.
+
+These are descriptive marginal distributions of the catalogue-weighted sample.
+Distance, extinction, sky position and localization area are correlated; the
+plots do not isolate their separate causal effects. The localization radius is
+itself a deterministic function of distance. Maximum altitude diagnoses geometric
+accessibility, while trigger month probes seasonal night visibility. Galactic
+longitude is wrapped to $[-180^\circ,180^\circ)$, with the Galactic centre at zero.
+Bin edges, denominators, category counts and fractions are saved in
+\texttt{figures/outcome\_trends.csv} within the run directory.
+
+\begin{figure}[!htbp]\centering
+\includegraphics[width=\linewidth]{outcomes_by_distance.pdf}
+\caption{Outcome fractions versus distance. Each progenitor panel includes all Figure 1 categories; the bottom panel gives the shared candidate count per bin. Blank bins have no candidates.}
+\end{figure}
+
+\begin{figure}[!htbp]\centering
+\includegraphics[width=\linewidth]{outcomes_by_latitude.pdf}
+\caption{Outcome fractions versus Galactic latitude. Each progenitor panel includes all Figure 1 categories; the bottom panel gives the shared candidate count per bin. Blank bins have no candidates.}
+\end{figure}
+
+\begin{figure}[!htbp]\centering
+\includegraphics[width=\linewidth]{outcomes_by_longitude.pdf}
+\caption{Outcome fractions versus Galactic longitude. Each progenitor panel includes all Figure 1 categories; the bottom panel gives the shared candidate count per bin. Blank bins have no candidates.}
+\end{figure}
+
+\begin{figure}[!htbp]\centering
+\includegraphics[width=\linewidth]{outcomes_by_extinction.pdf}
+\caption{Outcome fractions versus dust extinction. Each progenitor panel includes all Figure 1 categories; the bottom panel gives the shared candidate count per bin. Blank bins have no candidates.}
+\end{figure}
+
+\begin{figure}[!htbp]\centering
+\includegraphics[width=\linewidth]{outcomes_by_month.pdf}
+\caption{Outcome fractions versus UTC trigger month. Each progenitor panel includes all Figure 1 categories; the bottom panel gives the shared candidate count per bin. Blank bins have no candidates.}
+\end{figure}
+
+\begin{figure}[!htbp]\centering
+\includegraphics[width=\linewidth]{outcomes_by_localization.pdf}
+\caption{Outcome fractions versus localization cap radius. Each progenitor panel includes all Figure 1 categories; the bottom panel gives the shared candidate count per bin. Blank bins have no candidates.}
+\end{figure}
+
+\begin{figure}[!htbp]\centering
+\includegraphics[width=\linewidth]{outcomes_by_altitude.pdf}
+\caption{Outcome fractions versus maximum geometric altitude. Each progenitor panel includes all Figure 1 categories; the bottom panel gives the shared candidate count per bin. Blank bins have no candidates.}
+\end{figure}
+\clearpage
 \section{Quality assurance}
 \begin{figure}[!htbp]\centering
 \includegraphics[width=\linewidth]{qa_population.pdf}

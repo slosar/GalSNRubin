@@ -3,7 +3,7 @@
 n\_candidates & 1000 & Candidates per progenitor, shared draws \\
 seed & 2027 & Random seed \\
 year & 2027 & Uniform UTC trigger year \\
-progenitors & ('RSG', 'BSG', 'WR') & Canonical ccsnlc progenitors \\
+progenitors & ['RSG', 'BSG', 'WR'] & Canonical ccsnlc progenitors \\
 band & z & LSST band \\
 latitude\_deg & -30.244633 & Site latitude [deg] \\
 longitude\_deg & -70.749417 & East-positive site longitude [deg] \\
@@ -19,14 +19,14 @@ ephemeris\_step\_s & 300.0 & Sun, Moon and Earth rotation grid [s] \\
 theta25\_deg & 30.0 & Search cap radius at reference distance [deg] \\
 reference\_distance\_kpc & 25.0 & Localization reference distance [kpc] \\
 fov\_deg2 & 9.6 & Effective field of view [square deg] \\
-exposures\_s & (1.0, 1.0, 15.0, 15.0) & Ordered exposure durations per pointing [s] \\
+exposures\_s & [1.0, 1.0, 15.0, 15.0] & Ordered exposure durations per pointing [s] \\
 dead\_time\_s & 15.0 & Dead time after every exposure, includes slewing [s] \\
 integration\_samples & 5 & Midpoint flux quadrature samples per exposure \\
 snr\_threshold & 5.0 & Single-exposure detection SNR \\
-zeropoints & (26.52, 28.51, 28.36, 28.17, 27.78, 26.82) & One electron/s AB zero points, ugrizy \\
-sky\_mags & (23.05, 22.25, 21.2, 20.46, 19.61, 18.6) & Dark sky AB mag per square arcsec, ugrizy \\
-seeing\_arcsec & (0.92, 0.87, 0.83, 0.8, 0.78, 0.76) & Effective zenith PSF FWHM [arcsec], ugrizy \\
-saturation15\_mags & (14.7, 15.7, 15.8, 15.8, 15.3, 13.9) & Fiducial 15 s saturation AB magnitudes, ugrizy \\
+zeropoints & [26.52, 28.51, 28.36, 28.17, 27.78, 26.82] & One electron/s AB zero points, ugrizy \\
+sky\_mags & [23.05, 22.25, 21.2, 20.46, 19.61, 18.6] & Dark sky AB mag per square arcsec, ugrizy \\
+seeing\_arcsec & [0.92, 0.87, 0.83, 0.8, 0.78, 0.76] & Effective zenith PSF FWHM [arcsec], ugrizy \\
+saturation15\_mags & [14.7, 15.7, 15.8, 15.8, 15.3, 13.9] & Fiducial 15 s saturation AB magnitudes, ugrizy \\
 pixel\_scale\_arcsec & 0.2 & Pixel scale [arcsec] \\
 read\_noise\_e & 8.8 & Read noise per pixel per exposure [electrons] \\
 dark\_current\_e\_s & 0.2 & Dark current per pixel [electrons/s] \\

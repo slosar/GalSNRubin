@@ -96,6 +96,65 @@ def make_sky_products(results, figures, config):
              av_counts=counts, av_edges=edges)
 
 
+def make_outcome_trends(results, figures, config, outcomes, labels):
+    """Binned outcome fractions among all triggers, with shared candidate counts.
+
+    Empty bins remain blank. Counts and bin edges are exported for audit; these
+    descriptive marginals do not isolate causal effects of correlated inputs.
+    """
+    import pandas as pd
+    from astropy.coordinates import SkyCoord
+    from astropy import units as u
+    coords = SkyCoord(results.ra.to_numpy()*u.deg,
+                      results.dec.to_numpy()*u.deg).galactic
+    variables = [
+        ('distance', results.distance_kpc.to_numpy(), 'Distance [kpc]',
+         np.linspace(0, np.ceil(results.distance_kpc.max()/5)*5, 13)),
+        ('latitude', coords.b.deg, 'Galactic latitude b [deg]', np.arange(2*np.floor(coords.b.deg.min()/2),2*np.ceil(coords.b.deg.max()/2)+1,2)),
+        ('longitude', coords.l.wrap_at(180*u.deg).deg, 'Galactic longitude l [deg]', np.linspace(-180,180,19)),
+        ('extinction', results.Av.to_numpy(), 'Dust extinction Av [mag]',
+         np.arange(0, max(5, np.ceil(results.Av.max()/5)*5)+1, 5)),
+        ('month', pd.to_datetime(results.trigger_unix,unit='s',utc=True).dt.month.to_numpy(),
+         'UTC trigger month', np.arange(.5,13.5,1)),
+        ('localization', results.theta_deg.to_numpy(), 'Localization cap radius [deg]',
+         np.linspace(0,max(5,np.ceil(results.theta_deg.max()/5)*5),13)),
+        ('altitude', results.max_alt_deg.to_numpy(), 'Maximum geometric altitude [deg]', np.arange(10*np.floor(results.max_alt_deg.min()/10),10*np.ceil(results.max_alt_deg.max()/10)+1,10)),
+    ]
+    palette = plt.get_cmap('tab10')(np.arange(len(outcomes)))
+    records = []
+    for name, values, xlabel, edges in variables:
+        fig, axes = plt.subplots(len(config.progenitors)+1,1,figsize=(10,8),sharex=True,
+                                 gridspec_kw={'height_ratios':[2]*len(config.progenitors)+[1]})
+        for ax, prog in zip(axes, config.progenitors):
+            mask = (results.progenitor==prog).to_numpy()
+            total = np.histogram(values[mask],edges)[0]
+            bottom = np.zeros(len(total),float)
+            for outcome,label,color in zip(outcomes,labels,palette):
+                count = np.histogram(values[mask & (results.outcome==outcome).to_numpy()],edges)[0]
+                fraction = np.divide(count,total,out=np.zeros(len(total),float),where=total>0)
+                ax.bar(edges[:-1],fraction,width=np.diff(edges),bottom=bottom,align='edge',color=color,
+                       label=label.replace('\n',' '),linewidth=0)
+                bottom += fraction
+                for lo,hi,n,k in zip(edges[:-1],edges[1:],total,count):
+                    records.append(dict(variable=name,progenitor=prog,outcome=outcome,
+                                        bin_left=lo,bin_right=hi,n_total=int(n),n_outcome=int(k),
+                                        fraction=k/n if n else np.nan))
+            ax.set(ylim=(0,1),ylabel=f'{prog} fraction')
+            ax.grid(axis='x',visible=False)
+        shared = ~results.candidate_id.duplicated().to_numpy()
+        axes[-1].hist(values[shared],bins=edges,color='#555555')
+        axes[-1].set(xlabel=xlabel,ylabel='Candidates',xlim=(edges[0],edges[-1]))
+        if name=='month':
+            axes[-1].set_xticks(range(1,13),['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'])
+        handles,legend_labels=axes[0].get_legend_handles_labels()
+        fig.legend(handles,legend_labels,loc='upper center',ncol=3,fontsize=8,frameon=False)
+        fig.tight_layout(rect=(0,0,1,.89))
+        for ext in ['pdf','png']:
+            fig.savefig(figures/f'outcomes_by_{name}.{ext}',dpi=180)
+        plt.close(fig)
+    pd.DataFrame(records).to_csv(figures/'outcome_trends.csv',index=False)
+
+
 def escape(value):
     return str(value).replace('_',r'\_').replace('%',r'\%').replace('&',r'\&')
 
@@ -125,6 +184,7 @@ def make_products(results, output_dir, config):
               'Not visible\nduring night', 'Moon\navoidance',
               'No complete\npointing', 'No valid\nmodel exposure',
               'Too faint', 'Search miss', 'Detected: usable\nphotometry', 'Detected: only\nsaturated']
+    make_outcome_trends(results, figures, config, outcomes, labels)
     fig,ax = plt.subplots(figsize=(12,4.8))
     for p,g in groups:
         counts = g.outcome.value_counts()
